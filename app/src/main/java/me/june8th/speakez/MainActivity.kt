@@ -9,49 +9,43 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import me.june8th.speakez.ui.theme.SpeakEZTheme
+import me.june8th.speakez.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SpeakEZTheme {
-                SpeakEZApp()
-            }
+            AppTheme { App() }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SpeakEZApp() {
+fun App() {
     var selectedItem by remember { mutableIntStateOf(0) }
-    val items = listOf("Home", "Search", "Settings")
-    val icons = listOf(Icons.Filled.Home, Icons.Filled.Search, Icons.Filled.Settings)
+    val items = listOf("Home", "Quick Actions", "Settings")
+    val icons = listOf(Icons.Filled.Home, Icons.Filled.Bolt, Icons.Filled.Settings)
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
+        modifier = Modifier.fillMaxSize(), bottomBar = {
             ShortNavigationBar {
                 items.forEachIndexed { index, item ->
                     ShortNavigationBarItem(
                         selected = selectedItem == index,
                         onClick = { selectedItem = index },
                         icon = { Icon(icons[index], contentDescription = item) },
-                        label = { Text(item) }
-                    )
+                        label = { Text(item) })
                 }
             }
-        }
-    ) { innerPadding ->
+        }) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
@@ -60,13 +54,5 @@ fun SpeakEZApp() {
         ) {
             Text(text = "Selected: ${items[selectedItem]}")
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SpeakEZAppPreview() {
-    SpeakEZTheme {
-        SpeakEZApp()
     }
 }
