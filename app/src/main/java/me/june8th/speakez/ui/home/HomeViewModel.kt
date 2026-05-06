@@ -5,17 +5,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import me.june8th.speakez.data.mock.MockVocabularyRepository
+import me.june8th.speakez.domain.model.VocabularyItem
+import me.june8th.speakez.tts.TtsManager
 import javax.inject.Inject
 
-data class VocabularyItem(
-    val id: String,
-    val title: String,
-    val iconTint: String,
-    val containerColor: String,
-)
-
 @HiltViewModel
-class HomeViewModel @Inject constructor() : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val ttsManager: TtsManager,
+) : ViewModel() {
     private val _sentenceWords = MutableStateFlow<List<String>>(emptyList())
     val sentenceWords: StateFlow<List<String>> = _sentenceWords.asStateFlow()
 
@@ -23,23 +21,16 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     val vocabulary: StateFlow<List<VocabularyItem>> = _vocabulary.asStateFlow()
 
     init {
-        // Load mock vocabulary
         loadMockVocabulary()
     }
 
     private fun loadMockVocabulary() {
-        val mockItems = listOf(
-            VocabularyItem("1", "Ăn uống", "0xFF0B7A75", "0xFFDDF7F4"),
-            VocabularyItem("2", "Y tế", "0xFFB54708", "0xFFFFE8D6"),
-            VocabularyItem("3", "Hoạt động", "0xFF2F5AA8", "0xFFDDE8FF"),
-            VocabularyItem("4", "Cảm xúc", "0xFF8E3B9E", "0xFFF3E0F8"),
-            VocabularyItem("5", "Cơ thể", "0xFF7A5B00", "0xFFFFF0C2"),
-        )
-        _vocabulary.value = mockItems
+        _vocabulary.value = MockVocabularyRepository.getCategories()
     }
 
     fun addWord(word: String) {
         _sentenceWords.value = _sentenceWords.value + word
+        ttsManager.speak(word)
     }
 
     fun removeLastWord() {
@@ -55,6 +46,18 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     }
 
     fun getSentence(): String = _sentenceWords.value.joinToString(" ")
+
+    fun speakSentence() {
+        val sentence = getSentence()
+        if (sentence.isNotBlank()) {
+            ttsManager.speak(sentence)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsManager.stop()
+    }
 }
 
 

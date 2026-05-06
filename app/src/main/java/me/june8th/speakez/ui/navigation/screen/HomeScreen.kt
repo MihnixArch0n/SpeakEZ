@@ -1,5 +1,6 @@
 package me.june8th.speakez.ui.navigation.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -39,7 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import me.june8th.speakez.R
 import me.june8th.speakez.ui.home.HomeViewModel
 
@@ -60,7 +62,7 @@ private val demoCategories = listOf(
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    val viewModel: HomeViewModel = viewModel()
+    val viewModel: HomeViewModel = hiltViewModel()
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -134,12 +136,20 @@ private fun SentenceBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = displayText,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+            // Auto-scroll text when overflow
+            LazyRow(
+                modifier = Modifier
+                    .weight(1f),
+                content = {
+                    item {
+                        Text(
+                            text = displayText,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
             )
             IconButton(onClick = { viewModel.removeLastWord() }) {
                 Icon(
@@ -147,7 +157,7 @@ private fun SentenceBar(
                     contentDescription = stringResource(R.string.delete_last_word),
                 )
             }
-            IconButton(onClick = { /* TTS action - will be implemented in Phase 4 */ }) {
+            IconButton(onClick = { viewModel.speakSentence() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                     contentDescription = stringResource(R.string.speak_sentence),
