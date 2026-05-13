@@ -53,7 +53,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickHelpText,
                     icon = Icons.Filled.Warning,
-                    containerColor = Color(0xFFD32F2F),
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxSize(),
@@ -62,7 +63,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickPainText,
                     icon = Icons.Filled.LocalHospital,
-                    containerColor = Color(0xFFF57C00),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxSize(),
@@ -71,7 +73,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickCallFamilyText,
                     icon = Icons.Filled.Call,
-                    containerColor = Color(0xFF2E7D32),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxSize(),
@@ -86,7 +89,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickHelpText,
                     icon = Icons.Filled.Warning,
-                    containerColor = Color(0xFFD32F2F),
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -96,7 +100,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickPainText,
                     icon = Icons.Filled.LocalHospital,
-                    containerColor = Color(0xFFF57C00),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -106,7 +111,8 @@ fun QuickPhrasesScreen(modifier: Modifier = Modifier) {
                 EmergencyButton(
                     text = quickCallFamilyText,
                     icon = Icons.Filled.Call,
-                    containerColor = Color(0xFF2E7D32),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -123,13 +129,17 @@ private fun EmergencyButton(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     containerColor: Color,
+    contentColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier,
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(
