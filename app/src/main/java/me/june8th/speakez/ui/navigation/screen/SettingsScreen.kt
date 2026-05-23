@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.AlertDialog
@@ -137,6 +138,20 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         Text(text = androidx.compose.ui.res.stringResource(R.string.settings_show_labels))
                         Switch(checked = enableHints, onCheckedChange = { viewModel.setShowLabels(it) })
                     }
+                }
+            }
+            item {
+                SettingCard(
+                    title = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_title),
+                    subtitle = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_subtitle),
+                    icon = Icons.Filled.Info,
+                ) {
+                    Text(text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_attribution))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_license_url),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
             item {
