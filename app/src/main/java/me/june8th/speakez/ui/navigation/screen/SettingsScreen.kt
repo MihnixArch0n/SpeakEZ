@@ -13,15 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +63,7 @@ private val defaultEmojis = listOf("🍚", "💊", "⚽", "😊", "🖐️")
 
 @Composable
 fun SettingsScreen(
-    onMenuClick: () -> Unit,
+    onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: SettingsViewModel = hiltViewModel()
@@ -114,239 +118,223 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (isLandscape) {
-                // Top Bar in landscape
+                // Top Bar in landscape: Quay lại button (left) and Lưu button (right)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(56.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(
-                            imageVector = Icons.Filled.Menu,
-                            contentDescription = "Menu",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
+                    Surface(
+                        onClick = onBackClick,
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Quay lại",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Quay lại",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+
                     Text(
                         text = androidx.compose.ui.res.stringResource(R.string.settings_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                }
 
-                // Two columns layout below top bar
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Left Column: settings
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    Surface(
+                        onClick = {
+                            viewModel.saveSettings()
+                            coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
+                        },
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        item {
-                            SettingCard(
-                                title = "Cài đặt Phát âm",
-                                subtitle = "Điều chỉnh tốc độ và cao độ giọng đọc",
-                                icon = Icons.Filled.Speaker,
-                            ) {
-                                Text(text = "Tốc độ đọc: ${"%.2f".format(speed)}")
-                                Slider(value = speed, onValueChange = viewModel::setSpeechRate, valueRange = 0.5f..2.0f)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = "Cao độ: ${"%.2f".format(pitch)}")
-                                Slider(value = pitch, onValueChange = viewModel::setPitch, valueRange = 0.5f..2.0f)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = { viewModel.testAudio() }) { Text("Nghe thử") }
-                            }
-                        }
-                        item {
-                            SettingCard(
-                                title = androidx.compose.ui.res.stringResource(R.string.settings_tts_title),
-                                subtitle = androidx.compose.ui.res.stringResource(R.string.settings_tts_subtitle),
-                                icon = Icons.AutoMirrored.Filled.VolumeUp,
-                            ) {
-                                Slider(value = volume, onValueChange = { viewModel.setVolume(it) })
-                            }
-                        }
-                        item {
-                            SettingCard(
-                                title = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_title),
-                                subtitle = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_subtitle),
-                                icon = Icons.Filled.Palette,
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(text = androidx.compose.ui.res.stringResource(R.string.settings_show_labels))
-                                    Switch(checked = enableHints, onCheckedChange = { viewModel.setShowLabels(it) })
-                                }
-                            }
-                        }
-                        item {
-                            SettingCard(
-                                title = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_title),
-                                subtitle = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_subtitle),
-                                icon = Icons.Filled.Info,
-                            ) {
-                                Text(text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_attribution))
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_license_url),
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-
-                    // Right Column: save button and vocabulary
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.saveSettings()
-                                coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Text(text = androidx.compose.ui.res.stringResource(R.string.settings_save))
-                        }
-
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    Icon(imageVector = Icons.Filled.Add, contentDescription = null)
-                                    Column {
-                                        Text(
-                                            text = "Quản lý Từ vựng",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                        Text(
-                                            text = "Thêm/ẩn hiện/đổi ảnh từ vựng",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = { showAddDialog = true }) { Text("Thêm từ mới") }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                LazyColumn(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(vocabulary) { item ->
-                                        VocabularyRow(
-                                            item = item,
-                                            onToggleVisibility = { viewModel.toggleVocabularyVisibility(item.id) },
-                                            onPickImage = {
-                                                selectedImageItemId = item.id
-                                                imagePicker.launch("image/*")
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Portrait (original scroll layout)
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    item {
-                        SettingCard(
-                            title = "Cài đặt Phát âm",
-                            subtitle = "Điều chỉnh tốc độ và cao độ giọng đọc",
-                            icon = Icons.Filled.Speaker,
-                        ) {
-                            Text(text = "Tốc độ đọc: ${"%.2f".format(speed)}")
-                            Slider(value = speed, onValueChange = viewModel::setSpeechRate, valueRange = 0.5f..2.0f)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "Cao độ: ${"%.2f".format(pitch)}")
-                            Slider(value = pitch, onValueChange = viewModel::setPitch, valueRange = 0.5f..2.0f)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = { viewModel.testAudio() }) { Text("Nghe thử") }
-                        }
-                    }
-                    item {
-                        SettingCard(
-                            title = androidx.compose.ui.res.stringResource(R.string.settings_tts_title),
-                            subtitle = androidx.compose.ui.res.stringResource(R.string.settings_tts_subtitle),
-                            icon = Icons.AutoMirrored.Filled.VolumeUp,
-                        ) {
-                            Slider(value = volume, onValueChange = { viewModel.setVolume(it) })
-                        }
-                    }
-                    item {
-                        SettingCard(
-                            title = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_title),
-                            subtitle = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_subtitle),
-                            icon = Icons.Filled.Palette,
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(text = androidx.compose.ui.res.stringResource(R.string.settings_show_labels))
-                                Switch(checked = enableHints, onCheckedChange = { viewModel.setShowLabels(it) })
-                            }
-                        }
-                    }
-                    item {
-                        SettingCard(
-                            title = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_title),
-                            subtitle = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_subtitle),
-                            icon = Icons.Filled.Info,
-                        ) {
-                            Text(text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_attribution))
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = "Lưu",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                             Text(
-                                text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_license_url),
-                                color = MaterialTheme.colorScheme.primary,
+                                text = "Lưu",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
-                    item {
-                        SettingCard(title = "Quản lý Từ vựng", subtitle = "Thêm/ẩn hiện/đổi ảnh từ vựng", icon = Icons.Filled.Add) {
-                            Button(onClick = { showAddDialog = true }) { Text("Thêm từ mới") }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                vocabulary.forEach { item ->
-                                    VocabularyRow(
-                                        item = item,
-                                        onToggleVisibility = { viewModel.toggleVocabularyVisibility(item.id) },
-                                        onPickImage = {
-                                            selectedImageItemId = item.id
-                                            imagePicker.launch("image/*")
-                                        },
-                                    )
-                                }
+                }
+            }
+
+            // Scrollable column of settings cards
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item {
+                    SettingCard(
+                        title = "Cài đặt Phát âm",
+                        subtitle = "Điều chỉnh tốc độ và cao độ giọng đọc",
+                        icon = Icons.Filled.Speaker,
+                    ) {
+                        Text(
+                            text = "Tốc độ đọc: ${"%.2f".format(speed)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Chậm",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = speed,
+                                onValueChange = viewModel::setSpeechRate,
+                                valueRange = 0.5f..2.0f,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "Nhanh",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Cao độ: ${"%.2f".format(pitch)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Trầm",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = pitch,
+                                onValueChange = viewModel::setPitch,
+                                valueRange = 0.5f..2.0f,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "Bổng",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { viewModel.testAudio() }) { Text("Nghe thử") }
+                    }
+                }
+                item {
+                    SettingCard(
+                        title = androidx.compose.ui.res.stringResource(R.string.settings_tts_title),
+                        subtitle = androidx.compose.ui.res.stringResource(R.string.settings_tts_subtitle),
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeDown,
+                                contentDescription = "Âm lượng nhỏ",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = volume,
+                                onValueChange = { viewModel.setVolume(it) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Âm lượng lớn",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                item {
+                    SettingCard(
+                        title = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_title),
+                        subtitle = androidx.compose.ui.res.stringResource(R.string.settings_icon_management_subtitle),
+                        icon = Icons.Filled.Palette,
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(text = androidx.compose.ui.res.stringResource(R.string.settings_show_labels))
+                            Switch(checked = enableHints, onCheckedChange = { viewModel.setShowLabels(it) })
+                        }
+                    }
+                }
+                item {
+                    SettingCard(
+                        title = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_title),
+                        subtitle = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_subtitle),
+                        icon = Icons.Filled.Info,
+                    ) {
+                        Text(text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_attribution))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.settings_mulberry_license_url),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                item {
+                    SettingCard(
+                        title = "Quản lý Từ vựng",
+                        subtitle = "Thêm/ẩn hiện/đổi ảnh từ vựng",
+                        icon = Icons.Filled.Add
+                    ) {
+                        Button(onClick = { showAddDialog = true }) { Text("Thêm từ mới") }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            vocabulary.forEach { item ->
+                                VocabularyRow(
+                                    item = item,
+                                    onToggleVisibility = { viewModel.toggleVocabularyVisibility(item.id) },
+                                    onPickImage = {
+                                        selectedImageItemId = item.id
+                                        imagePicker.launch("image/*")
+                                    },
+                                )
                             }
                         }
                     }

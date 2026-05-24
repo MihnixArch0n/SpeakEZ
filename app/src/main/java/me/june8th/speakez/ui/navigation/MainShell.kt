@@ -206,7 +206,11 @@ private fun MainNavHost(
             )
         }
         composable(MainRoute.Settings) {
-            SettingsScreen(onMenuClick = onMenuClick)
+            SettingsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
