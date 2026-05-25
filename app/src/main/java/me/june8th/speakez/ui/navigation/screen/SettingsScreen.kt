@@ -1,9 +1,14 @@
 package me.june8th.speakez.ui.navigation.screen
 
 import android.content.res.Configuration
+import android.content.Context
 import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,6 +73,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val viewModel: SettingsViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val sharedPrefs = remember(context) { context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE) }
+    var gridChoice by remember { mutableStateOf(sharedPrefs.getString("grid_choice", "4x6") ?: "4x6") }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val saveSuccessMessage = androidx.compose.ui.res.stringResource(R.string.settings_save_success)
@@ -100,6 +108,7 @@ fun SettingsScreen(
             if (!isLandscape) {
                 Button(
                     onClick = {
+                        sharedPrefs.edit().putString("grid_choice", gridChoice).apply()
                         viewModel.saveSettings()
                         coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
                     },
@@ -162,6 +171,7 @@ fun SettingsScreen(
 
                     Surface(
                         onClick = {
+                            sharedPrefs.edit().putString("grid_choice", gridChoice).apply()
                             viewModel.saveSettings()
                             coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
                         },
@@ -302,6 +312,43 @@ fun SettingsScreen(
                         ) {
                             Text(text = androidx.compose.ui.res.stringResource(R.string.settings_show_labels))
                             Switch(checked = enableHints, onCheckedChange = { viewModel.setShowLabels(it) })
+                        }
+                    }
+                }
+                item {
+                    SettingCard(
+                        title = "Khung hiển thị",
+                        subtitle = "Số lượng biểu tượng hiển thị trên một trang (chế độ ngang)",
+                        icon = Icons.Filled.Palette,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            listOf("3x5", "4x6", "5x8").forEach { option ->
+                                val isSelected = gridChoice == option
+                                Surface(
+                                    onClick = { gridChoice = option },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.medium,
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f)
+                                    )
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Text(
+                                            text = option,
+                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

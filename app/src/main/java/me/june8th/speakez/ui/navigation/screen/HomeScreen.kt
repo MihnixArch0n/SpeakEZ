@@ -1,6 +1,8 @@
 package me.june8th.speakez.ui.navigation.screen
 
 import android.content.res.Configuration
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -92,6 +94,22 @@ fun HomeScreen(
     val viewModel: HomeViewModel = hiltViewModel()
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val context = LocalContext.current
+    val sharedPrefs = remember(context) { context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE) }
+    val gridChoice = sharedPrefs.getString("grid_choice", "4x6") ?: "4x6"
+    val (gridRows, gridCols) = remember(gridChoice) {
+        when (gridChoice) {
+            "3x5" -> Pair(3, 5)
+            "4x6" -> Pair(4, 6)
+            "5x8" -> Pair(5, 8)
+            else -> Pair(4, 6)
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(gridChoice) {
+        viewModel.refreshGridSize()
+    }
 
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery = viewModel.searchQuery.collectAsState()
@@ -352,7 +370,8 @@ fun HomeScreen(
                 SymbolGrid(
                     viewModel = viewModel,
                     modifier = Modifier.weight(1f),
-                    columns = 6,
+                    columns = gridCols,
+                    rows = gridRows,
                     isLandscape = true
                 )
 
@@ -644,6 +663,7 @@ private fun SymbolGrid(
     modifier: Modifier = Modifier,
     columns: Int,
     isLandscape: Boolean = false,
+    rows: Int = 4,
 ) {
     val gridColumns = if (columns < 1) 1 else columns
     val symbols = if (isLandscape) {
@@ -680,7 +700,7 @@ private fun SymbolGrid(
                 if (isLandscape) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val verticalSpacing = 4.dp
-                        val rowCount = 4
+                        val rowCount = rows
                         val cardHeight = (maxHeight - (verticalSpacing * (rowCount - 1))) / rowCount
 
                         LazyVerticalGrid(

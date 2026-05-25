@@ -15,6 +15,8 @@ import me.june8th.speakez.data.mulberry.MulberrySymbolRepository
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
 import me.june8th.speakez.tts.TtsManager
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
 
@@ -22,6 +24,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val ttsManager: TtsManager,
     private val mulberrySymbolRepository: MulberrySymbolRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _sentenceWords = MutableStateFlow<List<MulberrySymbol>>(emptyList())
     val sentenceWords: StateFlow<List<MulberrySymbol>> = _sentenceWords.asStateFlow()
@@ -42,6 +45,9 @@ class HomeViewModel @Inject constructor(
 
     private val _currentPage = MutableStateFlow(0)
     val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
+
+    private val _itemsPerPage = MutableStateFlow(24)
+    val itemsPerPage: StateFlow<Int> = _itemsPerPage.asStateFlow()
 
     val filteredSymbols: StateFlow<List<MulberrySymbol>> = combine(
         _selectedCategory,
@@ -82,11 +88,11 @@ class HomeViewModel @Inject constructor(
 
     val paginatedSymbols: StateFlow<List<MulberrySymbol>> = combine(
         filteredSymbols,
-        _currentPage
-    ) { symbols, page ->
-        val itemsPerPage = 24
-        val startIndex = page * itemsPerPage
-        val endIndex = minOf(startIndex + itemsPerPage, symbols.size)
+        _currentPage,
+        _itemsPerPage
+    ) { symbols, page, limit ->
+        val startIndex = page * limit
+        val endIndex = minOf(startIndex + limit, symbols.size)
         if (startIndex < symbols.size && startIndex >= 0) {
             symbols.subList(startIndex, endIndex)
         } else {
@@ -98,17 +104,29 @@ class HomeViewModel @Inject constructor(
         initialValue = emptyList(),
     )
 
-    val totalPages: StateFlow<Int> = filteredSymbols
-        .map { symbols ->
-            val itemsPerPage = 24
-            if (symbols.isEmpty()) 1 else (symbols.size + itemsPerPage - 1) / itemsPerPage
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Lazily,
-            initialValue = 1,
-        )
+    val totalPages: StateFlow<Int> = combine(filteredSymbols, _itemsPerPage) { symbols, limit ->
+        if (symbols.isEmpty()) 1 else (symbols.size + limit - 1) / limit
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = 1,
+    )
+
+    fun refreshGridSize() {
+        val sharedPrefs = context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE)
+        val gridChoice = sharedPrefs.getString("grid_choice", "4x6") ?: "4x6"
+        _itemsPerPage.value = when (gridChoice) {
+            "3x5" -> 15
+            "4x6" -> 24
+            "5x8" -> 40
+            else -> 24
+        }
+    }
 
     init {
+        // Load initial grid size from preferences
+        refreshGridSize()
+
         viewModelScope.launch {
             val symbols = mulberrySymbolRepository.getSymbols()
             _symbols.value = symbols
@@ -117,17 +135,34 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private var lastCategorySelectTime = 0L
+    private var lastAddWordTime = 0L
+    private var lastPageChangeTime = 0L
+
     fun selectCategory(category: String?) {
+        val now = System.currentTimeMillis()
+        if (now - lastCategorySelectTime < 300) return
+        lastCategorySelectTime = now
+
+        // Refresh dynamic grid size choice
+        refreshGridSize()
+
         _selectedCategory.value = category
         _currentPage.value = 0
     }
 
     fun updateSearchQuery(query: String) {
+        // Refresh dynamic grid size choice
+        refreshGridSize()
+
         _searchQuery.value = query
         _currentPage.value = 0
     }
 
     fun nextPage() {
+        val now = System.currentTimeMillis()
+        if (now - lastPageChangeTime < 250) return
+        lastPageChangeTime = now
         val total = totalPages.value
         if (_currentPage.value < total - 1) {
             _currentPage.value += 1
@@ -135,12 +170,18 @@ class HomeViewModel @Inject constructor(
     }
 
     fun previousPage() {
+        val now = System.currentTimeMillis()
+        if (now - lastPageChangeTime < 150) return
+        lastPageChangeTime = now
         if (_currentPage.value > 0) {
             _currentPage.value -= 1
         }
     }
 
     fun addWord(symbol: MulberrySymbol) {
+        val now = System.currentTimeMillis()
+        if (now - lastAddWordTime < 150) return
+        lastAddWordTime = now
         _sentenceWords.value = _sentenceWords.value + symbol
         ttsManager.speak(symbol.symbolVi)
     }
