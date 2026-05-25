@@ -1,6 +1,8 @@
 package me.june8th.speakez.ui.navigation.screen
 
 import android.content.res.Configuration
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,11 +31,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.lazy.grid.itemsIndexed as lazyGridItemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -58,7 +72,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.draw.alpha
 import coil3.compose.AsyncImage
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import me.june8th.speakez.R
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
@@ -86,17 +104,68 @@ fun HomeScreen(
     onQuickPhrasesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val viewModel: HomeViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val viewModel: HomeViewModel = hiltViewModel(
+        viewModelStoreOwner = context as androidx.lifecycle.ViewModelStoreOwner
+    )
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val sharedPrefs = remember(context) { context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE) }
+    val gridChoice = sharedPrefs.getString("grid_choice", "4x6") ?: "4x6"
+    val (gridRows, gridCols) = remember(gridChoice) {
+        when (gridChoice) {
+            "3x5" -> Pair(3, 5)
+            "4x6" -> Pair(4, 6)
+            "5x8" -> Pair(5, 8)
+            else -> Pair(4, 6)
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(gridChoice) {
+        viewModel.refreshGridSize()
+    }
 
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery = viewModel.searchQuery.collectAsState()
     val sentenceWords = viewModel.sentenceWords.collectAsState()
 
+    val isEditMode by viewModel.isEditMode.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val selectedIndices = remember { androidx.compose.runtime.mutableStateListOf<Int>() }
+    androidx.compose.runtime.LaunchedEffect(isEditMode) {
+        selectedIndices.clear()
+    }
+    var showSymbolPicker by remember { mutableStateOf(false) }
+    var pendingPlaceholderIndex by remember { mutableStateOf(-1) }
+
     val topBarBackground = Color(0xFF1E1E24)
     val buttonColor = MaterialTheme.colorScheme.primary
     val buttonTextColor = MaterialTheme.colorScheme.onPrimary
+
+    // Symbol Picker Dialog
+    if (showSymbolPicker && isEditMode) {
+        val recSymbols by viewModel.recommendationSymbols.collectAsState()
+        val favSymbols by viewModel.favoriteSymbols.collectAsState()
+        val currentEditList = if (selectedCategory == "FAVORITES") favSymbols else recSymbols
+        val existingIds = remember(currentEditList) {
+            currentEditList.filter { !it.id.startsWith("PLACEHOLDER") }.map { it.id }.toSet()
+        }
+
+        SymbolPickerDialog(
+            viewModel = viewModel,
+            existingIds = existingIds,
+            onSymbolSelected = { symbol ->
+                if (selectedCategory == "FAVORITES") {
+                    viewModel.addSymbolToFavorites(pendingPlaceholderIndex, symbol)
+                } else {
+                    viewModel.addSymbolToRecommendation(pendingPlaceholderIndex, symbol)
+                }
+                showSymbolPicker = false
+            },
+            onDismiss = { showSymbolPicker = false }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -115,7 +184,128 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (isSearchActive) {
+                if (isEditMode) {
+                    // Edit mode Header: Hủy (left), Nút "Ưa thích" (middle), Câu nhanh, Lưu (right)
+                    Surface(
+                        onClick = { viewModel.setEditMode(false) },
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Hủy",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Hủy",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    val selectedCategory by viewModel.selectedCategory.collectAsState()
+                    val isEditingFavorites = selectedCategory == "FAVORITES"
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = {
+                            if (isEditingFavorites) {
+                                viewModel.selectCategory("RECOMMENDATION")
+                            } else {
+                                viewModel.selectCategory("FAVORITES")
+                            }
+                            selectedIndices.clear()
+                        },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        color = if (isEditingFavorites) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isEditingFavorites) Icons.Default.Home else Icons.Default.Favorite,
+                                    contentDescription = if (isEditingFavorites) "Chỉnh sửa Đề xuất" else "Chỉnh sửa Ưa thích",
+                                    tint = Color.White
+                                )
+                                Text(
+                                    text = if (isEditingFavorites) "Chỉnh sửa Đề xuất" else "Chỉnh sửa Ưa thích",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = onQuickPhrasesClick,
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = buttonColor,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.FlashOn,
+                                contentDescription = "Câu nhanh",
+                                tint = buttonTextColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Câu nhanh",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = buttonTextColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = { viewModel.saveEditChanges() },
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = "Lưu",
+                                tint = buttonTextColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Lưu",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = buttonTextColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (isSearchActive) {
                     // Search layout active
                     IconButton(onClick = {
                         isSearchActive = false
@@ -336,18 +526,53 @@ fun HomeScreen(
             CategoryRow(
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxWidth(),
-                isLandscape = true
+                isLandscape = true,
+                isEditMode = isEditMode
             )
 
-            // Vocabulary Grid - Fixed 6 columns, responsive heights
-            SymbolGrid(
-                viewModel = viewModel,
+            Row(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                columns = 6,
-                isLandscape = true
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Vocabulary Grid - Fixed 6 columns, responsive heights
+                SymbolGrid(
+                    viewModel = viewModel,
+                    modifier = Modifier.weight(1f),
+                    columns = gridCols,
+                    rows = gridRows,
+                    isLandscape = true,
+                    isEditMode = isEditMode,
+                    selectedIndices = selectedIndices,
+                    onPlaceholderClick = { index ->
+                        pendingPlaceholderIndex = index
+                        showSymbolPicker = true
+                    }
+                )
+
+                // Control Column on the right
+                ControlColumn(
+                    viewModel = viewModel,
+                    isEditMode = isEditMode,
+                    selectedIndices = selectedIndices.toList(),
+                    onDeleteClick = {
+                        if (selectedCategory == "FAVORITES") {
+                            viewModel.deleteFavoriteSymbols(selectedIndices.toList())
+                        } else {
+                            viewModel.deleteRecommendedSymbols(selectedIndices.toList())
+                        }
+                        selectedIndices.clear()
+                    },
+                    onAddToFavoritesClick = {
+                        viewModel.addRecommendedToFavorites(selectedIndices.toList())
+                        selectedIndices.clear()
+                    },
+                    modifier = Modifier
+                        .width(100.dp)
+                        .fillMaxHeight()
+                )
+            }
         } else {
             // Portrait
             SentenceBar(
@@ -362,7 +587,8 @@ fun HomeScreen(
             CategoryRow(
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxWidth(),
-                isLandscape = false
+                isLandscape = false,
+                isEditMode = isEditMode
             )
             SymbolGrid(
                 viewModel = viewModel,
@@ -370,7 +596,13 @@ fun HomeScreen(
                     .weight(1f)
                     .fillMaxWidth(),
                 columns = 2,
-                isLandscape = false
+                isLandscape = false,
+                isEditMode = isEditMode,
+                selectedIndices = selectedIndices,
+                onPlaceholderClick = { index ->
+                    pendingPlaceholderIndex = index
+                    showSymbolPicker = true
+                }
             )
         }
     }
@@ -501,9 +733,11 @@ private fun CategoryRow(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
     isLandscape: Boolean = false,
+    isEditMode: Boolean = false,
 ) {
     val categories = viewModel.categories.collectAsState()
     val selectedCategory = viewModel.selectedCategory.collectAsState()
+    val favoriteSymbols = viewModel.favoriteSymbols.collectAsState()
     val totalSymbols = categories.value.sumOf { it.symbolCount }
 
     Column(modifier = modifier) {
@@ -526,7 +760,8 @@ private fun CategoryRow(
                     selected = selectedCategory.value == "ALL_SYMBOLS",
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     onClick = { viewModel.selectCategory("ALL_SYMBOLS") },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
                 )
             }
             item(key = "categories_root") {
@@ -536,7 +771,31 @@ private fun CategoryRow(
                     selected = selectedCategory.value == null || selectedCategory.value == "CATEGORIES_ROOT",
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     onClick = { viewModel.selectCategory("CATEGORIES_ROOT") },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
+                )
+            }
+            item(key = "recommendation") {
+                CategoryChip(
+                    title = "Đề xuất",
+                    count = 120,
+                    selected = selectedCategory.value == "RECOMMENDATION",
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    onClick = { viewModel.selectCategory("RECOMMENDATION") },
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode || selectedCategory.value == "RECOMMENDATION"
+                )
+            }
+            item(key = "favorites") {
+                val actualFavCount = favoriteSymbols.value.count { !it.id.startsWith("PLACEHOLDER") }
+                CategoryChip(
+                    title = "Yêu thích",
+                    count = actualFavCount,
+                    selected = selectedCategory.value == "FAVORITES",
+                    containerColor = Color(0xFFFFE0E6),
+                    onClick = { viewModel.selectCategory("FAVORITES") },
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode || selectedCategory.value == "FAVORITES"
                 )
             }
             lazyRowItems(
@@ -551,7 +810,8 @@ private fun CategoryRow(
                             if (selectedCategory.value == category.id) "CATEGORIES_ROOT" else category.id,
                         )
                     },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
                 )
             }
         }
@@ -564,6 +824,7 @@ private fun CategoryChip(
     selected: Boolean,
     onClick: () -> Unit,
     isLandscape: Boolean = false,
+    enabled: Boolean = true,
 ) {
     CategoryChip(
         title = category.title,
@@ -571,7 +832,8 @@ private fun CategoryChip(
         selected = selected,
         containerColor = categoryColor(category.id),
         onClick = onClick,
-        isLandscape = isLandscape
+        isLandscape = isLandscape,
+        enabled = enabled
     )
 }
 
@@ -583,22 +845,27 @@ private fun CategoryChip(
     containerColor: Color,
     onClick: () -> Unit,
     isLandscape: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val width = if (isLandscape) 110.dp else 140.dp
     val height = if (isLandscape) 44.dp else 84.dp
     val padding = if (isLandscape) 4.dp else 12.dp
 
     Card(
-        modifier = Modifier.size(width = width, height = height),
+        modifier = Modifier
+            .size(width = width, height = height)
+            .alpha(if (enabled) 1f else 0.4f),
         border = BorderStroke(
             width = if (selected) 3.dp else 1.dp,
             color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
         ),
         colors = CardDefaults.cardColors(
             containerColor = if (isLandscape) Color.White else (if (selected) containerColor else containerColor.copy(alpha = 0.62f)),
+            disabledContainerColor = if (isLandscape) Color.White else (if (selected) containerColor else containerColor.copy(alpha = 0.62f)),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 1.dp),
         onClick = onClick,
+        enabled = enabled,
     ) {
         Column(
             modifier = Modifier
@@ -623,23 +890,73 @@ private fun CategoryChip(
 }
 
 @Composable
+private fun PlaceholderCard(
+    isLandscape: Boolean = false,
+    cardHeight: androidx.compose.ui.unit.Dp = 156.dp,
+    onClick: (() -> Unit)? = null,
+) {
+    val height = if (isLandscape) cardHeight else 156.dp
+    Surface(
+        onClick = onClick ?: {},
+        color = Color.LightGray.copy(alpha = 0.15f),
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .border(
+                BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.4f)),
+                MaterialTheme.shapes.medium
+            )
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Thêm thẻ",
+                tint = Color.LightGray,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun SymbolGrid(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
     columns: Int,
     isLandscape: Boolean = false,
+    rows: Int = 4,
+    isEditMode: Boolean = false,
+    selectedIndices: androidx.compose.runtime.snapshots.SnapshotStateList<Int> = remember { androidx.compose.runtime.mutableStateListOf() },
+    onPlaceholderClick: (Int) -> Unit = {},
 ) {
     val gridColumns = if (columns < 1) 1 else columns
-    val symbols = viewModel.filteredSymbols.collectAsState()
+    val symbols = if (isLandscape) {
+        viewModel.paginatedSymbols.collectAsState()
+    } else {
+        viewModel.filteredSymbols.collectAsState()
+    }
     val isLoading = viewModel.isLoading.collectAsState()
     val selectedCategory = viewModel.selectedCategory.collectAsState()
     val searchQuery = viewModel.searchQuery.collectAsState()
+    val currentPage by viewModel.currentPage.collectAsState()
+    val itemsPerPage by viewModel.itemsPerPage.collectAsState()
 
     val isRootFolders = (selectedCategory.value == null || selectedCategory.value == "CATEGORIES_ROOT") && searchQuery.value.isBlank()
+    val isRecommendation = selectedCategory.value == "RECOMMENDATION"
+    val isFavorites = selectedCategory.value == "FAVORITES"
+    val isRecommendationOrFavorites = isRecommendation || isFavorites
 
     Column(modifier = modifier) {
         if (!isLandscape) {
-            val titleText = if (isRootFolders) {
+            val titleText = if (isRecommendation) {
+                "Gợi ý đề xuất (${symbols.value.size})"
+            } else if (isFavorites) {
+                "Yêu thích (${symbols.value.size})"
+            } else if (isRootFolders) {
                 "Danh sách thư mục (${symbols.value.size})"
             } else {
                 stringResource(R.string.vocabulary_grid_title, symbols.value.size)
@@ -660,7 +977,7 @@ private fun SymbolGrid(
                 if (isLandscape) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val verticalSpacing = 4.dp
-                        val rowCount = 4
+                        val rowCount = rows
                         val cardHeight = (maxHeight - (verticalSpacing * (rowCount - 1))) / rowCount
 
                         LazyVerticalGrid(
@@ -669,31 +986,90 @@ private fun SymbolGrid(
                             contentPadding = PaddingValues(bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                            userScrollEnabled = false
                         ) {
-                            lazyGridItems(
+                            lazyGridItemsIndexed(
                                 items = symbols.value,
-                                key = { symbol -> symbol.id },
-                            ) { symbol ->
-                                if (isRootFolders) {
-                                    FolderCard(
-                                        symbol = symbol,
-                                        onClick = { viewModel.selectCategory(symbol.categoryId) },
+                                key = { _, symbol -> symbol.id },
+                            ) { pageIndex, symbol ->
+                                val overallIndex = currentPage * itemsPerPage + pageIndex
+                                val isPlaceholder = symbol.id.startsWith("PLACEHOLDER")
+
+                                if (isPlaceholder) {
+                                    PlaceholderCard(
                                         isLandscape = true,
-                                        cardHeight = cardHeight
-                                    )
-                                } else if (symbol.id == "BACK_BUTTON") {
-                                    BackCard(
-                                        onClick = { viewModel.selectCategory(null) },
-                                        isLandscape = true,
-                                        cardHeight = cardHeight
+                                        cardHeight = cardHeight,
+                                        onClick = if (isEditMode) { { onPlaceholderClick(overallIndex) } } else null
                                     )
                                 } else {
-                                    SymbolCard(
-                                        symbol = symbol,
-                                        onClick = { viewModel.addWord(symbol) },
-                                        isLandscape = true,
-                                        cardHeight = cardHeight
-                                    )
+                                    val showAsFolder = if (isRecommendationOrFavorites) symbol.isRepresentative else isRootFolders
+                                    Box(modifier = Modifier.fillMaxWidth().height(cardHeight)) {
+                                        if (showAsFolder) {
+                                            FolderCard(
+                                                symbol = symbol,
+                                                onClick = {
+                                                    if (isEditMode) {
+                                                        if (selectedIndices.contains(overallIndex)) {
+                                                            selectedIndices.remove(overallIndex)
+                                                        } else {
+                                                            selectedIndices.add(overallIndex)
+                                                        }
+                                                    } else {
+                                                        viewModel.selectCategory(symbol.categoryId)
+                                                    }
+                                                },
+                                                isLandscape = true,
+                                                cardHeight = cardHeight
+                                            )
+                                        } else {
+                                            SymbolCard(
+                                                symbol = symbol,
+                                                onClick = {
+                                                    if (isEditMode) {
+                                                        if (selectedIndices.contains(overallIndex)) {
+                                                            selectedIndices.remove(overallIndex)
+                                                        } else {
+                                                            selectedIndices.add(overallIndex)
+                                                        }
+                                                    } else {
+                                                        viewModel.addWord(symbol)
+                                                    }
+                                                },
+                                                isLandscape = true,
+                                                cardHeight = cardHeight
+                                            )
+                                        }
+
+                                        if (isEditMode) {
+                                            val isChecked = selectedIndices.contains(overallIndex)
+                                            Surface(
+                                                onClick = {
+                                                    if (isChecked) selectedIndices.remove(overallIndex) else selectedIndices.add(overallIndex)
+                                                },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(8.dp)
+                                                    .size(24.dp),
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                                shape = androidx.compose.foundation.shape.CircleShape,
+                                                border = BorderStroke(
+                                                    width = 2.dp,
+                                                    color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                                )
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    if (isChecked) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Selected",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -706,27 +1082,85 @@ private fun SymbolGrid(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        lazyGridItems(
+                        lazyGridItemsIndexed(
                             items = symbols.value,
-                            key = { symbol -> symbol.id },
-                        ) { symbol ->
-                            if (isRootFolders) {
-                                FolderCard(
-                                    symbol = symbol,
-                                    onClick = { viewModel.selectCategory(symbol.categoryId) },
-                                    isLandscape = false
-                                )
-                            } else if (symbol.id == "BACK_BUTTON") {
-                                BackCard(
-                                    onClick = { viewModel.selectCategory(null) },
-                                    isLandscape = false
+                            key = { _, symbol -> symbol.id },
+                        ) { pageIndex, symbol ->
+                            val overallIndex = pageIndex
+                            val isPlaceholder = symbol.id.startsWith("PLACEHOLDER")
+
+                            if (isPlaceholder) {
+                                PlaceholderCard(
+                                    isLandscape = false,
+                                    onClick = if (isEditMode) { { onPlaceholderClick(overallIndex) } } else null
                                 )
                             } else {
-                                SymbolCard(
-                                    symbol = symbol,
-                                    onClick = { viewModel.addWord(symbol) },
-                                    isLandscape = false
-                                )
+                                val showAsFolder = if (isRecommendationOrFavorites) symbol.isRepresentative else isRootFolders
+                                Box(modifier = Modifier.fillMaxWidth().height(156.dp)) {
+                                    if (showAsFolder) {
+                                        FolderCard(
+                                            symbol = symbol,
+                                            onClick = {
+                                                if (isEditMode) {
+                                                    if (selectedIndices.contains(overallIndex)) {
+                                                        selectedIndices.remove(overallIndex)
+                                                    } else {
+                                                        selectedIndices.add(overallIndex)
+                                                    }
+                                                } else {
+                                                    viewModel.selectCategory(symbol.categoryId)
+                                                }
+                                            },
+                                            isLandscape = false
+                                        )
+                                    } else {
+                                        SymbolCard(
+                                            symbol = symbol,
+                                            onClick = {
+                                                if (isEditMode) {
+                                                    if (selectedIndices.contains(overallIndex)) {
+                                                        selectedIndices.remove(overallIndex)
+                                                    } else {
+                                                        selectedIndices.add(overallIndex)
+                                                    }
+                                                } else {
+                                                    viewModel.addWord(symbol)
+                                                }
+                                            },
+                                            isLandscape = false
+                                        )
+                                    }
+
+                                    if (isEditMode) {
+                                        val isChecked = selectedIndices.contains(overallIndex)
+                                        Surface(
+                                            onClick = {
+                                                if (isChecked) selectedIndices.remove(overallIndex) else selectedIndices.add(overallIndex)
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(8.dp)
+                                                .size(24.dp),
+                                            color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                            shape = androidx.compose.foundation.shape.CircleShape,
+                                            border = BorderStroke(
+                                                width = 2.dp,
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                            )
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (isChecked) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = "Selected",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -995,6 +1429,382 @@ private fun SymbolCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnfavoriteIcon(tint: Color = Color.White) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+        Icon(
+            imageVector = Icons.Default.Favorite,
+            contentDescription = null,
+            tint = tint
+        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLine(
+                color = Color.Red,
+                start = Offset(2.dp.toPx(), 2.dp.toPx()),
+                end = Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
+                strokeWidth = 3.dp.toPx()
+            )
+        }
+    }
+}
+
+@Composable
+private fun ControlColumn(
+    viewModel: me.june8th.speakez.ui.home.HomeViewModel,
+    modifier: Modifier = Modifier,
+    isEditMode: Boolean = false,
+    selectedIndices: List<Int> = emptyList(),
+    onDeleteClick: () -> Unit = {},
+    onAddToFavoritesClick: () -> Unit = {}
+) {
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val currentPage by viewModel.currentPage.collectAsState()
+    val totalPages by viewModel.totalPages.collectAsState()
+
+    val canGoBack = selectedCategory != "CATEGORIES_ROOT" && selectedCategory != null
+    val canGoPrev = currentPage > 0
+    val canGoNext = currentPage < totalPages - 1
+    val isEditingFavorites = selectedCategory == "FAVORITES"
+
+    Column(
+        modifier = modifier
+            .background(Color(0xFF1E1E24), shape = MaterialTheme.shapes.medium)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (isEditMode) {
+            if (isEditingFavorites) {
+                // Edit Favorites mode: Bỏ yêu thích
+                ControlButton(
+                    icon = null,
+                    text = "Bỏ yêu",
+                    enabled = selectedIndices.isNotEmpty(),
+                    onClick = onDeleteClick,
+                    modifier = Modifier.weight(1f),
+                    iconContent = {
+                        UnfavoriteIcon(tint = if (selectedIndices.isNotEmpty()) Color.White else Color.White.copy(alpha = 0.35f))
+                    }
+                )
+            } else {
+                // Edit Recommendation mode: Xóa
+                ControlButton(
+                    icon = Icons.Default.Delete,
+                    text = "Xóa",
+                    enabled = selectedIndices.isNotEmpty(),
+                    onClick = onDeleteClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            ControlButton(
+                icon = Icons.Default.Home,
+                text = "Trang chủ",
+                enabled = true,
+                onClick = {
+                    viewModel.setEditMode(false)
+                    viewModel.selectCategory("CATEGORIES_ROOT")
+                    viewModel.updateSearchQuery("")
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            if (isEditingFavorites) {
+                ControlButton(
+                    icon = Icons.Default.Favorite,
+                    text = "Ưa thích",
+                    enabled = false,
+                    onClick = {},
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                // Edit Recommendation mode: add selected items to Favorites
+                ControlButton(
+                    icon = Icons.Default.Favorite,
+                    text = "Thêm Yêu",
+                    enabled = selectedIndices.isNotEmpty(),
+                    onClick = onAddToFavoritesClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        } else {
+            ControlButton(
+                icon = Icons.AutoMirrored.Filled.Undo,
+                text = "Quay lại",
+                enabled = canGoBack,
+                onClick = { viewModel.selectCategory("CATEGORIES_ROOT") },
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Home,
+                text = "Trang chủ",
+                enabled = true,
+                onClick = {
+                    viewModel.selectCategory("CATEGORIES_ROOT")
+                    viewModel.updateSearchQuery("")
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Favorite,
+                text = "Ưa thích",
+                enabled = true,
+                onClick = { viewModel.selectCategory("FAVORITES") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        ControlButton(
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            text = "Trước",
+            enabled = canGoPrev,
+            onClick = { viewModel.previousPage() },
+            modifier = Modifier.weight(1f)
+        )
+        ControlButton(
+            icon = Icons.AutoMirrored.Filled.ArrowForward,
+            text = "Tiếp theo",
+            enabled = canGoNext,
+            onClick = { viewModel.nextPage() },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector?,
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconContent: @Composable (() -> Unit)? = null
+) {
+    val backgroundColor = if (enabled) {
+        Color(0xFF3E2723) // Sleek dark brown color
+    } else {
+        Color(0xFF3E2723).copy(alpha = 0.35f)
+    }
+    val contentColor = if (enabled) {
+        Color.White
+    } else {
+        Color.White.copy(alpha = 0.35f)
+    }
+
+    Surface(
+        onClick = { if (enabled) onClick() },
+        modifier = modifier.fillMaxWidth(),
+        color = backgroundColor,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (enabled) Color(0xFF5D4037) else Color(0xFF5D4037).copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(2.dp)
+        ) {
+            if (iconContent != null) {
+                iconContent()
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = text,
+                    tint = contentColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SymbolPickerDialog(
+    viewModel: HomeViewModel,
+    existingIds: Set<String>,
+    onSymbolSelected: (MulberrySymbol) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val allSymbols by viewModel.allSymbols.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var dialogCategory by remember { mutableStateOf<String?>("CATEGORIES_ROOT") }
+    val isInCategory = dialogCategory != "CATEGORIES_ROOT" && dialogCategory != null && searchQuery.isBlank()
+
+    val displaySymbols = when {
+        searchQuery.isNotBlank() -> {
+            allSymbols.filter { sym ->
+                !sym.id.startsWith("PLACEHOLDER") &&
+                !existingIds.contains(sym.id) &&
+                (sym.symbolVi.contains(searchQuery, ignoreCase = true) ||
+                 sym.symbolEn.contains(searchQuery, ignoreCase = true) ||
+                 sym.categoryVi.contains(searchQuery, ignoreCase = true))
+            }.sortedBy { it.symbolVi.lowercase() }
+        }
+        dialogCategory == "CATEGORIES_ROOT" || dialogCategory == null -> {
+            allSymbols.filter { it.isRepresentative }
+                .distinctBy { it.categoryId }
+                .sortedBy { it.categoryVi.lowercase() }
+        }
+        else -> {
+            allSymbols.filter { sym ->
+                sym.categoryId == dialogCategory &&
+                !sym.id.startsWith("PLACEHOLDER") &&
+                !existingIds.contains(sym.id)
+            }.sortedBy { it.symbolVi.lowercase() }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .fillMaxHeight(0.94f),
+            shape = MaterialTheme.shapes.medium,
+            color = Color(0xFF2A2A32),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Search bar row (replaces header)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (isInCategory) {
+                        IconButton(
+                            onClick = { dialogCategory = "CATEGORIES_ROOT" },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Quay lại",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = {
+                            searchQuery = it
+                            if (it.isNotBlank()) dialogCategory = "CATEGORIES_ROOT"
+                        },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        singleLine = true,
+                        placeholder = {
+                            Text(
+                                text = if (isInCategory) {
+                                    val cat = categories.firstOrNull { it.id == dialogCategory }
+                                    "Tìm trong: ${cat?.title ?: "Danh mục"}..."
+                                } else {
+                                    "Tìm kiếm biểu tượng..."
+                                },
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.Close, "Xóa", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
+                        )
+                    )
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Đóng",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Grid
+                if (displaySymbols.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "Không tìm thấy kết quả" else "Danh mục trống",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(8),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        contentPadding = PaddingValues(bottom = 4.dp)
+                    ) {
+                        lazyGridItems(
+                            items = displaySymbols,
+                            key = { it.id }
+                        ) { symbol ->
+                            val isFolderNav = symbol.isRepresentative &&
+                                dialogCategory == "CATEGORIES_ROOT" &&
+                                searchQuery.isBlank()
+
+                            if (isFolderNav) {
+                                FolderCard(
+                                    symbol = symbol,
+                                    onClick = { dialogCategory = symbol.categoryId },
+                                    isLandscape = true,
+                                    cardHeight = 72.dp
+                                )
+                            } else {
+                                SymbolCard(
+                                    symbol = symbol,
+                                    onClick = { onSymbolSelected(symbol) },
+                                    isLandscape = true,
+                                    cardHeight = 72.dp
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

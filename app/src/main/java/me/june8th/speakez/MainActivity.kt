@@ -17,6 +17,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Disable multi-touch event splitting globally
+        (window.decorView as? android.view.ViewGroup)?.isMotionEventSplittingEnabled = false
+
         // Hide status bar (battery, time) and navigation bar for immersive fullscreen
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior =
