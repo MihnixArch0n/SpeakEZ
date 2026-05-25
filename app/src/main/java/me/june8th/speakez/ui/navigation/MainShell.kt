@@ -1,6 +1,8 @@
 package me.june8th.speakez.ui.navigation
 
 import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +27,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,10 +52,18 @@ fun MainShell() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    val context = LocalContext.current
+    val homeViewModel: me.june8th.speakez.ui.home.HomeViewModel = hiltViewModel(
+        viewModelStoreOwner = context as androidx.lifecycle.ViewModelStoreOwner
+    )
+    val isEditMode by homeViewModel.isEditMode.collectAsState()
+
     val currentTitle = remember(currentRoute) {
         when (currentRoute) {
             MainRoute.Home -> R.string.home_title
             MainRoute.QuickPhrases -> R.string.quick_phrases_title
+            MainRoute.EditRecommendation -> R.string.edit_recommendation_title
             MainRoute.Settings -> R.string.settings_title
             else -> R.string.app_name
         }
@@ -78,18 +89,38 @@ fun MainShell() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 mainNavItems.forEach { item ->
-                    val selected = currentRoute == item.route
+                    val selected = if (item.route == MainRoute.EditRecommendation) {
+                        currentRoute == MainRoute.Home && isEditMode
+                    } else if (item.route == MainRoute.Home) {
+                        currentRoute == MainRoute.Home && !isEditMode
+                    } else {
+                        currentRoute == item.route
+                    }
                     NavigationDrawerItem(
                         label = { Text(text = stringResource(item.labelRes)) },
                         selected = selected,
                         onClick = {
                             scope.launch { drawerState.close() }
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            if (item.route == MainRoute.EditRecommendation) {
+                                homeViewModel.setEditMode(true)
+                                homeViewModel.selectCategory("RECOMMENDATION")
+                                homeViewModel.updateSearchQuery("")
+                                navController.navigate(MainRoute.Home) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
+                            } else {
+                                homeViewModel.setEditMode(false)
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         },
                         icon = {
@@ -135,16 +166,36 @@ fun MainShell() {
                 bottomBar = {
                     NavigationBar {
                         mainNavItems.forEach { item ->
-                            val selected = currentRoute == item.route
+                            val selected = if (item.route == MainRoute.EditRecommendation) {
+                                currentRoute == MainRoute.Home && isEditMode
+                            } else if (item.route == MainRoute.Home) {
+                                currentRoute == MainRoute.Home && !isEditMode
+                            } else {
+                                currentRoute == item.route
+                            }
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                                    if (item.route == MainRoute.EditRecommendation) {
+                                        homeViewModel.setEditMode(true)
+                                        homeViewModel.selectCategory("RECOMMENDATION")
+                                        homeViewModel.updateSearchQuery("")
+                                        navController.navigate(MainRoute.Home) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    } else {
+                                        homeViewModel.setEditMode(false)
+                                        navController.navigate(item.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 },
                                 icon = {
@@ -213,6 +264,17 @@ private fun MainNavHost(
                     navController.popBackStack()
                 }
             )
+        }
+        composable(MainRoute.EditRecommendation) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Text(
+                    text = "Màn hình Chỉnh sửa Đề xuất (Tính năng đang khảo sát phương án)",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
     }
 }

@@ -43,6 +43,16 @@ class HomeViewModel @Inject constructor(
 
     private val _symbols = MutableStateFlow<List<MulberrySymbol>>(emptyList())
 
+    private val _recommendationSymbols = MutableStateFlow<List<MulberrySymbol>>(emptyList())
+    val recommendationSymbols: StateFlow<List<MulberrySymbol>> = _recommendationSymbols.asStateFlow()
+
+    private val _isEditMode = MutableStateFlow(false)
+    val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
+
+    fun setEditMode(enabled: Boolean) {
+        _isEditMode.value = enabled
+    }
+
     private val _currentPage = MutableStateFlow(0)
     val currentPage: StateFlow<Int> = _currentPage.asStateFlow()
 
@@ -53,18 +63,24 @@ class HomeViewModel @Inject constructor(
         _selectedCategory,
         _searchQuery,
         _symbols,
-    ) { selectedCategory, searchQuery, symbols ->
+        _recommendationSymbols,
+    ) { selectedCategory, searchQuery, symbols, recSymbols ->
         val viLocale = Locale.forLanguageTag("vi-VN")
+        
+        val sourceSymbols = if (selectedCategory == "RECOMMENDATION") recSymbols else symbols
         
         if (searchQuery.isNotBlank()) {
             return@combine mulberrySymbolRepository.filterSymbols(
-                symbols = symbols,
+                symbols = sourceSymbols,
                 query = searchQuery,
-                categoryId = if (selectedCategory == "ALL_SYMBOLS" || selectedCategory == "CATEGORIES_ROOT") null else selectedCategory,
+                categoryId = if (selectedCategory == "ALL_SYMBOLS" || selectedCategory == "CATEGORIES_ROOT" || selectedCategory == "RECOMMENDATION") null else selectedCategory,
             )
         }
         
         when (selectedCategory) {
+            "RECOMMENDATION" -> {
+                sourceSymbols
+            }
             "ALL_SYMBOLS" -> {
                 symbols.sortedWith(compareBy<MulberrySymbol> { it.symbolVi.lowercase(viLocale) }.thenBy { it.id.toIntOrNull() ?: Int.MAX_VALUE })
             }
@@ -131,8 +147,84 @@ class HomeViewModel @Inject constructor(
             val symbols = mulberrySymbolRepository.getSymbols()
             _symbols.value = symbols
             _categories.value = mulberrySymbolRepository.getCategories(symbols)
+
+            val sharedPrefs = context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE)
+            val savedIdsString = sharedPrefs.getString("recommended_ids", null)
+            if (savedIdsString != null) {
+                val savedIds = savedIdsString.split(",")
+                val mapped = savedIds.mapIndexed { index, id ->
+                    if (id.startsWith("PLACEHOLDER")) {
+                        MulberrySymbol(
+                            id = "PLACEHOLDER_$index",
+                            categoryId = "",
+                            grammar = "",
+                            rated = 0,
+                            tags = "",
+                            symbolEn = "",
+                            categoryEn = "",
+                            categoryVi = "",
+                            symbolVi = "",
+                            assetPath = "",
+                            isRepresentative = false
+                        )
+                    } else {
+                        symbols.firstOrNull { it.id == id } ?: MulberrySymbol(
+                            id = "PLACEHOLDER_$index",
+                            categoryId = "",
+                            grammar = "",
+                            rated = 0,
+                            tags = "",
+                            symbolEn = "",
+                            categoryEn = "",
+                            categoryVi = "",
+                            symbolVi = "",
+                            assetPath = "",
+                            isRepresentative = false
+                        )
+                    }
+                }
+                _recommendationSymbols.value = mapped
+            } else {
+                // Randomly select both folders and normal symbols to put into recommendation tab
+                val folderSymbols = symbols.filter { it.isRepresentative }
+                val normalSymbols = symbols.filter { !it.isRepresentative }
+                // Get exactly 120 mixed symbols (e.g., 20 folders and 100 normal cards)
+                val mixed = (folderSymbols.shuffled().take(20) + normalSymbols.shuffled().take(100)).shuffled()
+                _recommendationSymbols.value = mixed
+            }
+
             _isLoading.value = false
         }
+    }
+
+    fun deleteRecommendedSymbols(indices: List<Int>) {
+        val currentList = _recommendationSymbols.value.toMutableList()
+        for (index in indices) {
+            if (index in currentList.indices) {
+                currentList[index] = MulberrySymbol(
+                    id = "PLACEHOLDER_$index",
+                    categoryId = "",
+                    grammar = "",
+                    rated = 0,
+                    tags = "",
+                    symbolEn = "",
+                    categoryEn = "",
+                    categoryVi = "",
+                    symbolVi = "",
+                    assetPath = "",
+                    isRepresentative = false
+                )
+            }
+        }
+        _recommendationSymbols.value = currentList
+    }
+
+    fun saveRecommendedSymbols() {
+        val ids = _recommendationSymbols.value.map { it.id }
+        val idsString = ids.joinToString(",")
+        val sharedPrefs = context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE)
+        sharedPrefs.edit().putString("recommended_ids", idsString).apply()
+        _isEditMode.value = false
     }
 
     private var lastCategorySelectTime = 0L

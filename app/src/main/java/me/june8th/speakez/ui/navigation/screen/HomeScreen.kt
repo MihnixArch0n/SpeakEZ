@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Menu
@@ -37,6 +38,12 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.lazy.grid.itemsIndexed as lazyGridItemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -63,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.draw.alpha
 import coil3.compose.AsyncImage
 import me.june8th.speakez.R
 import me.june8th.speakez.domain.model.MulberryCategory
@@ -91,11 +99,13 @@ fun HomeScreen(
     onQuickPhrasesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val viewModel: HomeViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val viewModel: HomeViewModel = hiltViewModel(
+        viewModelStoreOwner = context as androidx.lifecycle.ViewModelStoreOwner
+    )
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    val context = LocalContext.current
     val sharedPrefs = remember(context) { context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE) }
     val gridChoice = sharedPrefs.getString("grid_choice", "4x6") ?: "4x6"
     val (gridRows, gridCols) = remember(gridChoice) {
@@ -114,6 +124,12 @@ fun HomeScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery = viewModel.searchQuery.collectAsState()
     val sentenceWords = viewModel.sentenceWords.collectAsState()
+
+    val isEditMode by viewModel.isEditMode.collectAsState()
+    val selectedIndices = remember { androidx.compose.runtime.mutableStateListOf<Int>() }
+    androidx.compose.runtime.LaunchedEffect(isEditMode) {
+        selectedIndices.clear()
+    }
 
     val topBarBackground = Color(0xFF1E1E24)
     val buttonColor = MaterialTheme.colorScheme.primary
@@ -136,7 +152,118 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (isSearchActive) {
+                if (isEditMode) {
+                    // Edit mode Header: Hủy (left), Nút "Ưa thích" (middle), Câu nhanh, Lưu (right)
+                    Surface(
+                        onClick = { viewModel.setEditMode(false) },
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Hủy",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Hủy",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = { /* Will implement favorites edit later */ },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        color = MaterialTheme.colorScheme.secondary,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Ưa thích",
+                                    tint = Color.White
+                                )
+                                Text(
+                                    text = "Chỉnh sửa Ưa thích",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = onQuickPhrasesClick,
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = buttonColor,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.FlashOn,
+                                contentDescription = "Câu nhanh",
+                                tint = buttonTextColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Câu nhanh",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = buttonTextColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Surface(
+                        onClick = { viewModel.saveRecommendedSymbols() },
+                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = "Lưu",
+                                tint = buttonTextColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = "Lưu",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = buttonTextColor,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (isSearchActive) {
                     // Search layout active
                     IconButton(onClick = {
                         isSearchActive = false
@@ -357,7 +484,8 @@ fun HomeScreen(
             CategoryRow(
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxWidth(),
-                isLandscape = true
+                isLandscape = true,
+                isEditMode = isEditMode
             )
 
             Row(
@@ -372,12 +500,20 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     columns = gridCols,
                     rows = gridRows,
-                    isLandscape = true
+                    isLandscape = true,
+                    isEditMode = isEditMode,
+                    selectedIndices = selectedIndices
                 )
 
                 // Control Column on the right
                 ControlColumn(
                     viewModel = viewModel,
+                    isEditMode = isEditMode,
+                    selectedIndices = selectedIndices.toList(),
+                    onDeleteClick = {
+                        viewModel.deleteRecommendedSymbols(selectedIndices.toList())
+                        selectedIndices.clear()
+                    },
                     modifier = Modifier
                         .width(100.dp)
                         .fillMaxHeight()
@@ -397,7 +533,8 @@ fun HomeScreen(
             CategoryRow(
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxWidth(),
-                isLandscape = false
+                isLandscape = false,
+                isEditMode = isEditMode
             )
             SymbolGrid(
                 viewModel = viewModel,
@@ -405,7 +542,9 @@ fun HomeScreen(
                     .weight(1f)
                     .fillMaxWidth(),
                 columns = 2,
-                isLandscape = false
+                isLandscape = false,
+                isEditMode = isEditMode,
+                selectedIndices = selectedIndices
             )
         }
     }
@@ -536,6 +675,7 @@ private fun CategoryRow(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
     isLandscape: Boolean = false,
+    isEditMode: Boolean = false,
 ) {
     val categories = viewModel.categories.collectAsState()
     val selectedCategory = viewModel.selectedCategory.collectAsState()
@@ -561,7 +701,8 @@ private fun CategoryRow(
                     selected = selectedCategory.value == "ALL_SYMBOLS",
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     onClick = { viewModel.selectCategory("ALL_SYMBOLS") },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
                 )
             }
             item(key = "categories_root") {
@@ -571,7 +712,19 @@ private fun CategoryRow(
                     selected = selectedCategory.value == null || selectedCategory.value == "CATEGORIES_ROOT",
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     onClick = { viewModel.selectCategory("CATEGORIES_ROOT") },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
+                )
+            }
+            item(key = "recommendation") {
+                CategoryChip(
+                    title = "Đề xuất",
+                    count = 120,
+                    selected = selectedCategory.value == "RECOMMENDATION",
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    onClick = { viewModel.selectCategory("RECOMMENDATION") },
+                    isLandscape = isLandscape,
+                    enabled = true
                 )
             }
             lazyRowItems(
@@ -586,7 +739,8 @@ private fun CategoryRow(
                             if (selectedCategory.value == category.id) "CATEGORIES_ROOT" else category.id,
                         )
                     },
-                    isLandscape = isLandscape
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode
                 )
             }
         }
@@ -599,6 +753,7 @@ private fun CategoryChip(
     selected: Boolean,
     onClick: () -> Unit,
     isLandscape: Boolean = false,
+    enabled: Boolean = true,
 ) {
     CategoryChip(
         title = category.title,
@@ -606,7 +761,8 @@ private fun CategoryChip(
         selected = selected,
         containerColor = categoryColor(category.id),
         onClick = onClick,
-        isLandscape = isLandscape
+        isLandscape = isLandscape,
+        enabled = enabled
     )
 }
 
@@ -618,22 +774,27 @@ private fun CategoryChip(
     containerColor: Color,
     onClick: () -> Unit,
     isLandscape: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val width = if (isLandscape) 110.dp else 140.dp
     val height = if (isLandscape) 44.dp else 84.dp
     val padding = if (isLandscape) 4.dp else 12.dp
 
     Card(
-        modifier = Modifier.size(width = width, height = height),
+        modifier = Modifier
+            .size(width = width, height = height)
+            .alpha(if (enabled) 1f else 0.4f),
         border = BorderStroke(
             width = if (selected) 3.dp else 1.dp,
             color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
         ),
         colors = CardDefaults.cardColors(
             containerColor = if (isLandscape) Color.White else (if (selected) containerColor else containerColor.copy(alpha = 0.62f)),
+            disabledContainerColor = if (isLandscape) Color.White else (if (selected) containerColor else containerColor.copy(alpha = 0.62f)),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 1.dp),
         onClick = onClick,
+        enabled = enabled,
     ) {
         Column(
             modifier = Modifier
@@ -658,12 +819,45 @@ private fun CategoryChip(
 }
 
 @Composable
+private fun PlaceholderCard(
+    isLandscape: Boolean = false,
+    cardHeight: androidx.compose.ui.unit.Dp = 156.dp,
+) {
+    val height = if (isLandscape) cardHeight else 156.dp
+    Surface(
+        color = Color.LightGray.copy(alpha = 0.15f),
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .border(
+                BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.4f)),
+                MaterialTheme.shapes.medium
+            )
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Thêm thẻ",
+                tint = Color.LightGray,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun SymbolGrid(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
     columns: Int,
     isLandscape: Boolean = false,
     rows: Int = 4,
+    isEditMode: Boolean = false,
+    selectedIndices: androidx.compose.runtime.snapshots.SnapshotStateList<Int> = remember { androidx.compose.runtime.mutableStateListOf() },
 ) {
     val gridColumns = if (columns < 1) 1 else columns
     val symbols = if (isLandscape) {
@@ -674,12 +868,17 @@ private fun SymbolGrid(
     val isLoading = viewModel.isLoading.collectAsState()
     val selectedCategory = viewModel.selectedCategory.collectAsState()
     val searchQuery = viewModel.searchQuery.collectAsState()
+    val currentPage by viewModel.currentPage.collectAsState()
+    val itemsPerPage by viewModel.itemsPerPage.collectAsState()
 
     val isRootFolders = (selectedCategory.value == null || selectedCategory.value == "CATEGORIES_ROOT") && searchQuery.value.isBlank()
+    val isRecommendation = selectedCategory.value == "RECOMMENDATION"
 
     Column(modifier = modifier) {
         if (!isLandscape) {
-            val titleText = if (isRootFolders) {
+            val titleText = if (isRecommendation) {
+                "Gợi ý đề xuất (${symbols.value.size})"
+            } else if (isRootFolders) {
                 "Danh sách thư mục (${symbols.value.size})"
             } else {
                 stringResource(R.string.vocabulary_grid_title, symbols.value.size)
@@ -711,24 +910,87 @@ private fun SymbolGrid(
                             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
                             userScrollEnabled = false
                         ) {
-                            lazyGridItems(
+                            lazyGridItemsIndexed(
                                 items = symbols.value,
-                                key = { symbol -> symbol.id },
-                            ) { symbol ->
-                                if (isRootFolders) {
-                                    FolderCard(
-                                        symbol = symbol,
-                                        onClick = { viewModel.selectCategory(symbol.categoryId) },
+                                key = { _, symbol -> symbol.id },
+                            ) { pageIndex, symbol ->
+                                val overallIndex = currentPage * itemsPerPage + pageIndex
+                                val isPlaceholder = symbol.id.startsWith("PLACEHOLDER")
+
+                                if (isPlaceholder) {
+                                    PlaceholderCard(
                                         isLandscape = true,
                                         cardHeight = cardHeight
                                     )
                                 } else {
-                                    SymbolCard(
-                                        symbol = symbol,
-                                        onClick = { viewModel.addWord(symbol) },
-                                        isLandscape = true,
-                                        cardHeight = cardHeight
-                                    )
+                                    val showAsFolder = if (isRecommendation) symbol.isRepresentative else isRootFolders
+                                    Box(modifier = Modifier.fillMaxWidth().height(cardHeight)) {
+                                        if (showAsFolder) {
+                                            FolderCard(
+                                                symbol = symbol,
+                                                onClick = {
+                                                    if (isEditMode) {
+                                                        if (selectedIndices.contains(overallIndex)) {
+                                                            selectedIndices.remove(overallIndex)
+                                                        } else {
+                                                            selectedIndices.add(overallIndex)
+                                                        }
+                                                    } else {
+                                                        viewModel.selectCategory(symbol.categoryId)
+                                                    }
+                                                },
+                                                isLandscape = true,
+                                                cardHeight = cardHeight
+                                            )
+                                        } else {
+                                            SymbolCard(
+                                                symbol = symbol,
+                                                onClick = {
+                                                    if (isEditMode) {
+                                                        if (selectedIndices.contains(overallIndex)) {
+                                                            selectedIndices.remove(overallIndex)
+                                                        } else {
+                                                            selectedIndices.add(overallIndex)
+                                                        }
+                                                    } else {
+                                                        viewModel.addWord(symbol)
+                                                    }
+                                                },
+                                                isLandscape = true,
+                                                cardHeight = cardHeight
+                                            )
+                                        }
+
+                                        if (isEditMode) {
+                                            val isChecked = selectedIndices.contains(overallIndex)
+                                            Surface(
+                                                onClick = {
+                                                    if (isChecked) selectedIndices.remove(overallIndex) else selectedIndices.add(overallIndex)
+                                                },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(8.dp)
+                                                    .size(24.dp),
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                                shape = androidx.compose.foundation.shape.CircleShape,
+                                                border = BorderStroke(
+                                                    width = 2.dp,
+                                                    color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                                )
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    if (isChecked) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Selected",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -741,22 +1003,84 @@ private fun SymbolGrid(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        lazyGridItems(
+                        lazyGridItemsIndexed(
                             items = symbols.value,
-                            key = { symbol -> symbol.id },
-                        ) { symbol ->
-                            if (isRootFolders) {
-                                FolderCard(
-                                    symbol = symbol,
-                                    onClick = { viewModel.selectCategory(symbol.categoryId) },
+                            key = { _, symbol -> symbol.id },
+                        ) { pageIndex, symbol ->
+                            val overallIndex = pageIndex
+                            val isPlaceholder = symbol.id.startsWith("PLACEHOLDER")
+
+                            if (isPlaceholder) {
+                                PlaceholderCard(
                                     isLandscape = false
                                 )
                             } else {
-                                SymbolCard(
-                                    symbol = symbol,
-                                    onClick = { viewModel.addWord(symbol) },
-                                    isLandscape = false
-                                )
+                                val showAsFolder = if (isRecommendation) symbol.isRepresentative else isRootFolders
+                                Box(modifier = Modifier.fillMaxWidth().height(156.dp)) {
+                                    if (showAsFolder) {
+                                        FolderCard(
+                                            symbol = symbol,
+                                            onClick = {
+                                                if (isEditMode) {
+                                                    if (selectedIndices.contains(overallIndex)) {
+                                                        selectedIndices.remove(overallIndex)
+                                                    } else {
+                                                        selectedIndices.add(overallIndex)
+                                                    }
+                                                } else {
+                                                    viewModel.selectCategory(symbol.categoryId)
+                                                }
+                                            },
+                                            isLandscape = false
+                                        )
+                                    } else {
+                                        SymbolCard(
+                                            symbol = symbol,
+                                            onClick = {
+                                                if (isEditMode) {
+                                                    if (selectedIndices.contains(overallIndex)) {
+                                                        selectedIndices.remove(overallIndex)
+                                                    } else {
+                                                        selectedIndices.add(overallIndex)
+                                                    }
+                                                } else {
+                                                    viewModel.addWord(symbol)
+                                                }
+                                            },
+                                            isLandscape = false
+                                        )
+                                    }
+
+                                    if (isEditMode) {
+                                        val isChecked = selectedIndices.contains(overallIndex)
+                                        Surface(
+                                            onClick = {
+                                                if (isChecked) selectedIndices.remove(overallIndex) else selectedIndices.add(overallIndex)
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(8.dp)
+                                                .size(24.dp),
+                                            color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                            shape = androidx.compose.foundation.shape.CircleShape,
+                                            border = BorderStroke(
+                                                width = 2.dp,
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                            )
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                if (isChecked) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = "Selected",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1033,7 +1357,10 @@ private fun SymbolCard(
 @Composable
 private fun ControlColumn(
     viewModel: me.june8th.speakez.ui.home.HomeViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isEditMode: Boolean = false,
+    selectedIndices: List<Int> = emptyList(),
+    onDeleteClick: () -> Unit = {}
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
@@ -1050,30 +1377,58 @@ private fun ControlColumn(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ControlButton(
-            icon = Icons.AutoMirrored.Filled.ArrowBack,
-            text = "Quay lại",
-            enabled = canGoBack,
-            onClick = { viewModel.selectCategory("CATEGORIES_ROOT") },
-            modifier = Modifier.weight(1f)
-        )
-        ControlButton(
-            icon = Icons.Default.Home,
-            text = "Trang chủ",
-            enabled = true,
-            onClick = {
-                viewModel.selectCategory("CATEGORIES_ROOT")
-                viewModel.updateSearchQuery("")
-            },
-            modifier = Modifier.weight(1f)
-        )
-        ControlButton(
-            icon = Icons.Default.Favorite,
-            text = "Ưa thích",
-            enabled = false,
-            onClick = {},
-            modifier = Modifier.weight(1f)
-        )
+        if (isEditMode) {
+            ControlButton(
+                icon = Icons.Default.Delete,
+                text = "Xóa",
+                enabled = selectedIndices.isNotEmpty(),
+                onClick = onDeleteClick,
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Home,
+                text = "Trang chủ",
+                enabled = true,
+                onClick = {
+                    viewModel.setEditMode(false)
+                    viewModel.selectCategory("CATEGORIES_ROOT")
+                    viewModel.updateSearchQuery("")
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Favorite,
+                text = "Ưa thích",
+                enabled = false,
+                onClick = {},
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            ControlButton(
+                icon = Icons.AutoMirrored.Filled.Undo,
+                text = "Quay lại",
+                enabled = canGoBack,
+                onClick = { viewModel.selectCategory("CATEGORIES_ROOT") },
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Home,
+                text = "Trang chủ",
+                enabled = true,
+                onClick = {
+                    viewModel.selectCategory("CATEGORIES_ROOT")
+                    viewModel.updateSearchQuery("")
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ControlButton(
+                icon = Icons.Default.Favorite,
+                text = "Ưa thích",
+                enabled = false,
+                onClick = {},
+                modifier = Modifier.weight(1f)
+            )
+        }
         ControlButton(
             icon = Icons.AutoMirrored.Filled.ArrowBack,
             text = "Trước",
