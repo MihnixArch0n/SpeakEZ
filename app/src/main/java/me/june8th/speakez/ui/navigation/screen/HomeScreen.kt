@@ -689,6 +689,7 @@ private fun SymbolGrid(
                             contentPadding = PaddingValues(bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+                            userScrollEnabled = false
                         ) {
                             lazyGridItems(
                                 items = symbols.value,

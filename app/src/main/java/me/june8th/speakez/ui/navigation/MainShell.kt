@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -65,7 +66,7 @@ fun MainShell() {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = isLandscape,
+        gesturesEnabled = !isLandscape || drawerState.isOpen,
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -106,6 +107,7 @@ fun MainShell() {
         if (isLandscape) {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
+                contentWindowInsets = WindowInsets(0, 0, 0, 0)
             ) { innerPadding ->
                 MainNavHost(
                     navController = navController,
