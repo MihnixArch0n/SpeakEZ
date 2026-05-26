@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,14 +36,14 @@ import me.june8th.speakez.R
 
 private data class LoginProfile(
     val name: String,
-    val colors: List<Color>,
     val initials: String,
+    val colorIndex: Int,
 )
 
 private val demoProfiles = listOf(
-    LoginProfile("Bé Na", listOf(Color(0xFFB3E5FC), Color(0xFF1976D2)), "BN"),
-    LoginProfile("Ông Nội", listOf(Color(0xFFD1C4E9), Color(0xFF673AB7)), "ON"),
-    LoginProfile("Chị Lan", listOf(Color(0xFFC8E6C9), Color(0xFF2E7D32)), "CL"),
+    LoginProfile("Bé Na", "BN", 0),
+    LoginProfile("Ông Nội", "ON", 1),
+    LoginProfile("Chị Lan", "CL", 2),
 )
 
 @Composable
@@ -155,6 +154,16 @@ private fun AvatarCard(
     val nameStyle = if (isLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge
     val spacerHeight = if (isLandscape) 10.dp else 18.dp
     val cardPadding = if (isLandscape) 12.dp else 18.dp
+    val avatarColors = when (profile.colorIndex % 3) {
+        0 -> listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary)
+        1 -> listOf(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.secondary)
+        else -> listOf(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.tertiary)
+    }
+    val avatarContentColor = when (profile.colorIndex % 3) {
+        0 -> MaterialTheme.colorScheme.onPrimaryContainer
+        1 -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
 
     Card(
         onClick = onClick,
@@ -175,7 +184,7 @@ private fun AvatarCard(
                     .size(avatarSize)
                     .clip(CircleShape)
                     .background(
-                        brush = Brush.linearGradient(profile.colors),
+                        brush = Brush.linearGradient(avatarColors),
                     ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -183,7 +192,7 @@ private fun AvatarCard(
                     text = profile.initials,
                     style = initialStyle,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = avatarContentColor,
                 )
             }
             Spacer(modifier = Modifier.height(spacerHeight))

@@ -1,9 +1,9 @@
 package me.june8th.speakez.ui.navigation.screen
 
-import android.content.res.Configuration
 import android.content.Context
-import androidx.compose.ui.platform.LocalContext
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,39 +13,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as lazyGridItems
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.foundation.lazy.grid.itemsIndexed as lazyGridItemsIndexed
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -53,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,24 +59,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.draw.alpha
-import coil3.compose.AsyncImage
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import me.june8th.speakez.R
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
 import me.june8th.speakez.ui.home.HomeViewModel
+import androidx.compose.foundation.lazy.grid.items as lazyGridItems
+import androidx.compose.foundation.lazy.grid.itemsIndexed as lazyGridItemsIndexed
+import androidx.compose.foundation.lazy.items as lazyRowItems
 
 private val categoryPalette = listOf(
     Color(0xFFDDF7F4),
@@ -139,7 +140,7 @@ fun HomeScreen(
     var showSymbolPicker by remember { mutableStateOf(false) }
     var pendingPlaceholderIndex by remember { mutableStateOf(-1) }
 
-    val topBarBackground = Color(0xFF1E1E24)
+    val topBarBackground = MaterialTheme.colorScheme.surfaceVariant
     val buttonColor = MaterialTheme.colorScheme.primary
     val buttonTextColor = MaterialTheme.colorScheme.onPrimary
 
@@ -188,33 +189,21 @@ fun HomeScreen(
                     // Edit mode Header: Hủy (left), Nút "Ưa thích" (middle), Câu nhanh, Lưu (right)
                     Surface(
                         onClick = { viewModel.setEditMode(false) },
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = MaterialTheme.colorScheme.error,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Hủy",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Hủy",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Default.Close,
+                            text = "Hủy",
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        )
                     }
 
                     val selectedCategory by viewModel.selectedCategory.collectAsState()
                     val isEditingFavorites = selectedCategory == "FAVORITES"
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     Surface(
                         onClick = {
@@ -240,70 +229,46 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = if (isEditingFavorites) Icons.Default.Home else Icons.Default.Favorite,
                                     contentDescription = if (isEditingFavorites) "Chỉnh sửa Đề xuất" else "Chỉnh sửa Ưa thích",
-                                    tint = Color.White
+                                    tint = if (isEditingFavorites) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary
                                 )
                                 Text(
                                     text = if (isEditingFavorites) "Chỉnh sửa Đề xuất" else "Chỉnh sửa Ưa thích",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
+                                    color = if (isEditingFavorites) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     Surface(
                         onClick = onQuickPhrasesClick,
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = buttonColor,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.FlashOn,
-                                contentDescription = "Câu nhanh",
-                                tint = buttonTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Câu nhanh",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = buttonTextColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Filled.FlashOn,
+                            text = "Câu nhanh",
+                            contentColor = buttonTextColor,
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     Surface(
                         onClick = { viewModel.saveEditChanges() },
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = MaterialTheme.colorScheme.primary,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = "Lưu",
-                                tint = buttonTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Lưu",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = buttonTextColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Default.Save,
+                            text = "Lưu",
+                            contentColor = buttonTextColor,
+                        )
                     }
                 } else if (isSearchActive) {
                     // Search layout active
@@ -346,39 +311,27 @@ fun HomeScreen(
                     // Left button: Hamburger Menu
                     Surface(
                         onClick = onMenuClick,
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = buttonColor,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Menu,
-                                contentDescription = "Menu",
-                                tint = buttonTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Menu",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = buttonTextColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Filled.Menu,
+                            text = "Menu",
+                            contentColor = buttonTextColor,
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     // Center: White sentence box (Contains images + text cards)
                     Surface(
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.medium,
-                        border = BorderStroke(2.dp, Color.Black)
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Row(
                             modifier = Modifier
@@ -397,7 +350,7 @@ fun HomeScreen(
                                         Text(
                                             text = stringResource(R.string.sentence_placeholder),
                                             style = MaterialTheme.typography.bodyLarge,
-                                            color = Color.Gray,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(horizontal = 4.dp)
                                         )
                                     }
@@ -407,14 +360,16 @@ fun HomeScreen(
                                         Card(
                                             modifier = Modifier
                                                 .height(48.dp)
-                                                .width(52.dp),
+                                                .widthIn(min = 92.dp),
                                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
                                             border = BorderStroke(1.dp, Color.LightGray)
                                         ) {
-                                            Column(
-                                                modifier = Modifier.fillMaxSize().padding(2.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Center
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                                             ) {
                                                 AsyncImage(
                                                     model = symbol.assetPath,
@@ -426,7 +381,7 @@ fun HomeScreen(
                                                     text = symbol.symbolVi,
                                                     style = MaterialTheme.typography.labelSmall.copy(
                                                         fontWeight = FontWeight.Bold,
-                                                        fontSize = 8.sp
+                                                        fontSize = 10.sp
                                                     ),
                                                     color = Color.Black,
                                                     maxLines = 1,
@@ -446,7 +401,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Backspace,
                                     contentDescription = stringResource(R.string.delete_last_word),
-                                    tint = Color.Black,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -457,67 +412,43 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = stringResource(R.string.speak_sentence),
-                                    tint = Color.Black,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     // Button: Quick Phrases (Câu nhanh)
                     Surface(
                         onClick = onQuickPhrasesClick,
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = buttonColor,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.FlashOn,
-                                contentDescription = "Câu nhanh",
-                                tint = buttonTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Câu nhanh",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = buttonTextColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Filled.FlashOn,
+                            text = "Câu nhanh",
+                            contentColor = buttonTextColor,
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
 
                     // Right button: Search
                     Surface(
                         onClick = { isSearchActive = true },
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = buttonColor,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = "Tìm kiếm",
-                                tint = buttonTextColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = "Tìm kiếm",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = buttonTextColor,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        TopBarActionContent(
+                            icon = Icons.Filled.Search,
+                            text = "Tìm kiếm",
+                            contentColor = buttonTextColor,
+                        )
                     }
                 }
             }
@@ -729,6 +660,37 @@ private fun SymbolSearchBar(
 }
 
 @Composable
+private fun TopBarActionContent(
+    icon: ImageVector,
+    text: String,
+    contentColor: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun CategoryRow(
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
@@ -792,7 +754,7 @@ private fun CategoryRow(
                     title = "Yêu thích",
                     count = actualFavCount,
                     selected = selectedCategory.value == "FAVORITES",
-                    containerColor = Color(0xFFFFE0E6),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     onClick = { viewModel.selectCategory("FAVORITES") },
                     isLandscape = isLandscape,
                     enabled = !isEditMode || selectedCategory.value == "FAVORITES"
@@ -847,13 +809,18 @@ private fun CategoryChip(
     isLandscape: Boolean = false,
     enabled: Boolean = true,
 ) {
-    val width = if (isLandscape) 110.dp else 140.dp
     val height = if (isLandscape) 44.dp else 84.dp
     val padding = if (isLandscape) 4.dp else 12.dp
+    val cardModifier = if (isLandscape) {
+        Modifier
+            .height(height)
+            .widthIn(min = 110.dp)
+    } else {
+        Modifier.size(width = 140.dp, height = height)
+    }
 
     Card(
-        modifier = Modifier
-            .size(width = width, height = height)
+        modifier = cardModifier
             .alpha(if (enabled) 1f else 0.4f),
         border = BorderStroke(
             width = if (selected) 3.dp else 1.dp,
@@ -867,24 +834,48 @@ private fun CategoryChip(
         onClick = onClick,
         enabled = enabled,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = title,
-                style = if (isLandscape) MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.titleSmall,
-                color = if (isLandscape) Color.Black else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isLandscape) Color.DarkGray else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (isLandscape) {
+            Row(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 8.dp, vertical = padding),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.DarkGray,
+                    maxLines = 1,
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -1050,11 +1041,11 @@ private fun SymbolGrid(
                                                     .align(Alignment.TopStart)
                                                     .padding(8.dp)
                                                     .size(24.dp),
-                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                                 shape = androidx.compose.foundation.shape.CircleShape,
                                                 border = BorderStroke(
                                                     width = 2.dp,
-                                                    color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                                    color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                                 )
                                             ) {
                                                 Box(contentAlignment = Alignment.Center) {
@@ -1062,7 +1053,7 @@ private fun SymbolGrid(
                                                         Icon(
                                                             imageVector = Icons.Default.Check,
                                                             contentDescription = "Selected",
-                                                            tint = Color.White,
+                                                            tint = MaterialTheme.colorScheme.onPrimary,
                                                             modifier = Modifier.size(14.dp)
                                                         )
                                                     }
@@ -1141,11 +1132,11 @@ private fun SymbolGrid(
                                                 .align(Alignment.TopStart)
                                                 .padding(8.dp)
                                                 .size(24.dp),
-                                            color = if (isChecked) MaterialTheme.colorScheme.primary else Color.White,
+                                            color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                             shape = androidx.compose.foundation.shape.CircleShape,
                                             border = BorderStroke(
                                                 width = 2.dp,
-                                                color = if (isChecked) MaterialTheme.colorScheme.primary else Color.Gray
+                                                color = if (isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                             )
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
@@ -1153,7 +1144,7 @@ private fun SymbolGrid(
                                                     Icon(
                                                         imageVector = Icons.Default.Check,
                                                         contentDescription = "Selected",
-                                                        tint = Color.White,
+                                                        tint = MaterialTheme.colorScheme.onPrimary,
                                                         modifier = Modifier.size(14.dp)
                                                     )
                                                 }
@@ -1188,7 +1179,7 @@ private fun FolderCard(
     val padding = if (isLandscape) 4.dp else 12.dp
 
     val folderBgColor = if (isLandscape) Color.White else categoryColor(symbol.categoryId)
-    val folderIconColor = Color(0xFFFFA000) // Beautiful Warm Amber/Gold folder color
+    val folderIconColor = Color(0xFFFFA000)
 
     Surface(
         color = folderBgColor,
@@ -1435,7 +1426,8 @@ private fun SymbolCard(
 }
 
 @Composable
-private fun UnfavoriteIcon(tint: Color = Color.White) {
+private fun UnfavoriteIcon(tint: Color) {
+    val errorColor = MaterialTheme.colorScheme.error
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
         Icon(
             imageVector = Icons.Default.Favorite,
@@ -1444,7 +1436,7 @@ private fun UnfavoriteIcon(tint: Color = Color.White) {
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawLine(
-                color = Color.Red,
+                color = errorColor,
                 start = Offset(2.dp.toPx(), 2.dp.toPx()),
                 end = Offset(size.width - 2.dp.toPx(), size.height - 2.dp.toPx()),
                 strokeWidth = 3.dp.toPx()
@@ -1473,7 +1465,7 @@ private fun ControlColumn(
 
     Column(
         modifier = modifier
-            .background(Color(0xFF1E1E24), shape = MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
             .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -1488,7 +1480,13 @@ private fun ControlColumn(
                     onClick = onDeleteClick,
                     modifier = Modifier.weight(1f),
                     iconContent = {
-                        UnfavoriteIcon(tint = if (selectedIndices.isNotEmpty()) Color.White else Color.White.copy(alpha = 0.35f))
+                        UnfavoriteIcon(
+                            tint = if (selectedIndices.isNotEmpty()) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f)
+                            }
+                        )
                     }
                 )
             } else {
@@ -1585,14 +1583,14 @@ private fun ControlButton(
     iconContent: @Composable (() -> Unit)? = null
 ) {
     val backgroundColor = if (enabled) {
-        Color(0xFF3E2723) // Sleek dark brown color
+        MaterialTheme.colorScheme.primaryContainer
     } else {
-        Color(0xFF3E2723).copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     }
     val contentColor = if (enabled) {
-        Color.White
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
-        Color.White.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f)
     }
 
     Surface(
@@ -1602,7 +1600,7 @@ private fun ControlButton(
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(
             width = 1.dp,
-            color = if (enabled) Color(0xFF5D4037) else Color(0xFF5D4037).copy(alpha = 0.35f)
+            color = if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
         )
     ) {
         Column(
@@ -1678,7 +1676,7 @@ private fun SymbolPickerDialog(
                 .fillMaxWidth(0.88f)
                 .fillMaxHeight(0.94f),
             shape = MaterialTheme.shapes.medium,
-            color = Color(0xFF2A2A32),
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
             Column(
@@ -1701,7 +1699,7 @@ private fun SymbolPickerDialog(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Quay lại",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1723,26 +1721,26 @@ private fun SymbolPickerDialog(
                                 } else {
                                     "Tìm kiếm biểu tượng..."
                                 },
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         },
                         leadingIcon = {
-                            Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                         },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
                                 IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(32.dp)) {
-                                    Icon(Icons.Default.Close, "Xóa", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Close, "Xóa", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                 }
                             }
                         },
-                        textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f)
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
 
@@ -1753,7 +1751,7 @@ private fun SymbolPickerDialog(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Đóng",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -1768,7 +1766,7 @@ private fun SymbolPickerDialog(
                         Text(
                             text = if (searchQuery.isNotBlank()) "Không tìm thấy kết quả" else "Danh mục trống",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {

@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.june8th.speakez.data.mulberry.MulberrySymbolRepository
 import me.june8th.speakez.domain.model.MulberryCategory
@@ -19,6 +18,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
+import androidx.core.content.edit
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -360,15 +360,15 @@ class HomeViewModel @Inject constructor(
 
     fun saveEditChanges() {
         val sharedPrefs = context.getSharedPreferences("SpeakEZ_Prefs", Context.MODE_PRIVATE)
-        val editor = sharedPrefs.edit()
-        
-        val recIdsString = _recommendationSymbols.value.map { it.id }.joinToString(",")
-        editor.putString("recommended_ids", recIdsString)
-        
-        val favIdsString = _favoriteSymbols.value.map { it.id }.joinToString(",")
-        editor.putString("favorite_ids", favIdsString)
-        
-        editor.apply()
+        sharedPrefs.edit {
+
+            val recIdsString = _recommendationSymbols.value.joinToString(",") { it.id }
+            putString("recommended_ids", recIdsString)
+
+            val favIdsString = _favoriteSymbols.value.joinToString(",") { it.id }
+            putString("favorite_ids", favIdsString)
+
+        }
         _isEditMode.value = false
     }
 
@@ -419,7 +419,7 @@ class HomeViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if (now - lastAddWordTime < 150) return
         lastAddWordTime = now
-        _sentenceWords.value = _sentenceWords.value + symbol
+        _sentenceWords.value += symbol
         ttsManager.speak(symbol.symbolVi)
     }
 

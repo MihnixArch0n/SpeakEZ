@@ -9,7 +9,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,15 +16,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
@@ -68,15 +71,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -91,6 +93,7 @@ import me.june8th.speakez.ui.quick_phrases.QuickPhraseIntent
 import me.june8th.speakez.ui.quick_phrases.QuickPhraseUiState
 import me.june8th.speakez.ui.quick_phrases.QuickPhrasesViewModel
 import me.june8th.speakez.ui.settings.SettingsViewModel
+import androidx.core.content.edit
 
 private val defaultEmojis = listOf("🍚", "💊", "⚽", "😊", "🖐️")
 
@@ -134,7 +137,7 @@ fun SettingsScreen(
             if (!isLandscape) {
                 Button(
                     onClick = {
-                        sharedPrefs.edit().putString("grid_choice", gridChoice).apply()
+                        sharedPrefs.edit { putString("grid_choice", gridChoice) }
                         viewModel.saveSettings()
                         coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
                     },
@@ -165,20 +168,24 @@ fun SettingsScreen(
                 ) {
                     Surface(
                         onClick = onBackClick,
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = MaterialTheme.colorScheme.primary,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Quay lại",
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Quay lại",
                                 style = MaterialTheme.typography.labelMedium,
@@ -197,24 +204,28 @@ fun SettingsScreen(
 
                     Surface(
                         onClick = {
-                            sharedPrefs.edit().putString("grid_choice", gridChoice).apply()
+                            sharedPrefs.edit { putString("grid_choice", gridChoice) }
                             viewModel.saveSettings()
                             coroutineScope.launch { snackbarHostState.showSnackbar(saveSuccessMessage) }
                         },
-                        modifier = Modifier.size(width = 86.dp, height = 56.dp),
+                        modifier = Modifier.height(56.dp).widthIn(min = 104.dp),
                         color = MaterialTheme.colorScheme.primary,
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        Row(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Save,
                                 contentDescription = "Lưu",
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Lưu",
                                 style = MaterialTheme.typography.labelMedium,
@@ -400,7 +411,7 @@ fun SettingsScreen(
                                     shape = MaterialTheme.shapes.medium,
                                     border = BorderStroke(
                                         width = 1.dp,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f)
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                                     )
                                 ) {
                                     Box(
