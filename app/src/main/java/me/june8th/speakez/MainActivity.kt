@@ -9,9 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import me.june8th.speakez.data.settings.AppSettingsRepository
@@ -31,12 +28,6 @@ class MainActivity : ComponentActivity() {
 
         // Disable multi-touch event splitting globally
         (window.decorView as? android.view.ViewGroup)?.isMotionEventSplittingEnabled = false
-
-        // Hide status bar (battery, time) and navigation bar for immersive fullscreen
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
 
         setContent {
             val fontScale by appSettingsRepository.fontScale.collectAsStateWithLifecycle(
