@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "211510093226",
+    "project_id": "speakez-ed461",
+    "storage_bucket": "speakez-ed461.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:211510093226:android:aaaeb181a9b2be4d9e77d3",
+        "android_client_info": {
+          "package_name": "me.june8th.speakez"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "211510093226-eq64r8rnq8ihavmnk805d0to05ktgg0u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeOyHgHI9EhGKKVRNbrxPzlTznV5YvMMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "211510093226-eq64r8rnq8ihavmnk805d0to05ktgg0u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
