@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -45,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -56,14 +59,14 @@ import me.june8th.speakez.R
 
 private data class OnboardingProfile(
     val name: String,
-    val colors: List<Color>,
     val initials: String,
+    val colorIndex: Int,
 )
 
 private val onboardingProfiles = listOf(
-    OnboardingProfile("Bé Na", listOf(Color(0xFFB3E5FC), Color(0xFF1976D2)), "BN"),
-    OnboardingProfile("Ông Nội", listOf(Color(0xFFD1C4E9), Color(0xFF673AB7)), "ON"),
-    OnboardingProfile("Chị Lan", listOf(Color(0xFFC8E6C9), Color(0xFF2E7D32)), "CL"),
+    OnboardingProfile("Bé Na", "BN", 0),
+    OnboardingProfile("Ông Nội", "ON", 1),
+    OnboardingProfile("Chị Lan", "CL", 2),
 )
 
 private val layoutOptions = listOf(
@@ -98,12 +101,17 @@ fun OnboardingScreen(
     val canProceed = if (currentStep == 0) viewModel.selectedProfile.value != null else true
 
     if (isLandscape) {
-        Row(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(0.35f)
-                    .background(Color(0xFF1E1E24))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(24.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.Start,
@@ -112,7 +120,7 @@ fun OnboardingScreen(
                     text = "SpeakEZ",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 ProgressDots(current = currentStep, total = totalSteps)
@@ -121,13 +129,13 @@ fun OnboardingScreen(
                     text = stepTitles[currentStep],
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stepDescs[currentStep],
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                 )
             }
 
@@ -178,19 +186,21 @@ fun OnboardingScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1E1E24), shape = MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                     .padding(16.dp),
             ) {
                 Text(
                     text = "SpeakEZ",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 ProgressDots(current = currentStep, total = totalSteps)
@@ -199,12 +209,12 @@ fun OnboardingScreen(
                     text = stepTitles[currentStep],
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = stepDescs[currentStep],
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                 )
             }
 
@@ -259,8 +269,8 @@ private fun ProgressDots(current: Int, total: Int) {
                     .size(if (index == current) 12.dp else 8.dp)
                     .clip(CircleShape)
                     .background(
-                        if (index == current) Color.White
-                        else Color.White.copy(alpha = 0.35f)
+                        if (index == current) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
                     )
             )
         }
@@ -282,7 +292,7 @@ private fun ProfileStep(viewModel: OnboardingViewModel) {
                 ProfileCard(
                     name = profile.name,
                     initials = profile.initials,
-                    colors = profile.colors,
+                    colorIndex = profile.colorIndex,
                     selected = selected,
                     onClick = { viewModel.selectedProfile.value = profile.name },
                 )
@@ -295,10 +305,21 @@ private fun ProfileStep(viewModel: OnboardingViewModel) {
 private fun ProfileCard(
     name: String,
     initials: String,
-    colors: List<Color>,
+    colorIndex: Int,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val avatarColors = when (colorIndex % 3) {
+        0 -> listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary)
+        1 -> listOf(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.secondary)
+        else -> listOf(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.tertiary)
+    }
+    val avatarContentColor = when (colorIndex % 3) {
+        0 -> MaterialTheme.colorScheme.onPrimaryContainer
+        1 -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.size(width = 130.dp, height = 170.dp),
@@ -307,7 +328,7 @@ private fun ProfileCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 8.dp else 4.dp),
         border = BorderStroke(
             width = if (selected) 3.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.4f),
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
         ),
     ) {
         Column(
@@ -321,14 +342,14 @@ private fun ProfileCard(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(brush = Brush.linearGradient(colors)),
+                    .background(brush = Brush.linearGradient(avatarColors)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = initials,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = avatarContentColor,
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -395,7 +416,7 @@ private fun LayoutCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 6.dp else 2.dp),
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,
-            color = if (selected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
         ),
     ) {
         Column(
@@ -425,7 +446,7 @@ private fun LayoutCard(
                                         .clip(RoundedCornerShape(1.dp))
                                         .background(
                                             if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                            else Color.LightGray.copy(alpha = 0.5f)
+                                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
                                         )
                                 )
                             }
@@ -539,11 +560,16 @@ private fun VoiceStep(viewModel: OnboardingViewModel) {
 
         Surface(
             onClick = { viewModel.testVoice() },
-            modifier = Modifier.size(width = 140.dp, height = 48.dp),
+            modifier = Modifier.height(48.dp).widthIn(min = 140.dp),
             color = MaterialTheme.colorScheme.secondary,
             shape = MaterialTheme.shapes.medium,
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
                     text = stringResource(R.string.onboarding_test_voice),
                     style = MaterialTheme.typography.titleSmall,
@@ -573,13 +599,16 @@ private fun NavButtons(
         if (currentStep > 0) {
             Surface(
                 onClick = onBack,
-                modifier = Modifier.size(width = 120.dp, height = 48.dp),
+                modifier = Modifier.height(48.dp).widthIn(min = 120.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.medium,
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                Row(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -587,6 +616,7 @@ private fun NavButtons(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.onboarding_back),
                         style = MaterialTheme.typography.labelMedium,
@@ -601,14 +631,17 @@ private fun NavButtons(
 
         Surface(
             onClick = { if (canProceed) onNext() },
-            modifier = Modifier.size(width = 120.dp, height = 48.dp),
+            modifier = Modifier.height(48.dp).widthIn(min = 120.dp),
             color = if (canProceed) MaterialTheme.colorScheme.primary
                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
             shape = MaterialTheme.shapes.medium,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Row(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Icon(
                     imageVector = if (isLastStep) Icons.Default.Check
@@ -617,6 +650,7 @@ private fun NavButtons(
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(20.dp),
                 )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = if (isLastStep) stringResource(R.string.onboarding_finish)
                            else stringResource(R.string.onboarding_next),
