@@ -53,6 +53,7 @@ import me.june8th.speakez.domain.model.AccountGender
 import me.june8th.speakez.domain.model.AccountProfile
 import me.june8th.speakez.domain.model.AccountType
 import me.june8th.speakez.domain.model.EmergencyAlert
+import me.june8th.speakez.domain.model.EmergencyAlertType
 import me.june8th.speakez.domain.model.GuardianConnection
 import me.june8th.speakez.domain.model.GuardianInvitation
 import me.june8th.speakez.domain.model.GuardianInvitationStatus
@@ -491,7 +492,7 @@ private fun EmergencyAlertList(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Cảnh báo chưa đọc",
+            text = "Cảnh báo chưa xử lý",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -503,6 +504,7 @@ private fun EmergencyAlertList(
             )
         } else {
             alerts.forEach { alert ->
+                val isCallRequest = alert.type == EmergencyAlertType.CALL_REQUEST
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -513,11 +515,22 @@ private fun EmergencyAlertList(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
-                            text = "${alert.userDisplayName}: ${alert.phraseText}",
+                            text = if (isCallRequest) {
+                                "Cuộc gọi khẩn cấp từ ${alert.userDisplayName}"
+                            } else {
+                                "${alert.userDisplayName}: ${alert.phraseText}"
+                            },
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
+                        if (isCallRequest) {
+                            Text(
+                                text = "Người dùng đang chờ người giám hộ phản hồi. Bấm xác nhận để dừng fallback gọi điện thoại.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
                         alert.actionPayload?.takeIf { it.isNotBlank() }?.let { payload ->
                             Text(
                                 text = payload,
@@ -529,7 +542,7 @@ private fun EmergencyAlertList(
                             onClick = { onMarkAlertRead(alert.id) },
                             enabled = !isBusy,
                         ) {
-                            Text("Đã xử lý")
+                            Text(if (isCallRequest) "Tôi đã nhận" else "Đã xử lý")
                         }
                     }
                 }

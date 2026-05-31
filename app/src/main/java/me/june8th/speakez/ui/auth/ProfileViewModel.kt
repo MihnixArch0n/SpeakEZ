@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import me.june8th.speakez.domain.model.AccountGender
 import me.june8th.speakez.domain.repository.AuthRepository
 import me.june8th.speakez.domain.repository.GuardianRepository
+import me.june8th.speakez.ui.common.toUserMessage
 import javax.inject.Inject
 
 data class ProfileActionState(
@@ -42,7 +43,7 @@ class ProfileViewModel @Inject constructor(
                     _actionState.update {
                         it.copy(
                             isSaving = false,
-                            message = throwable.message ?: "Không thể cập nhật hồ sơ",
+                            message = throwable.toUserMessage("Không thể cập nhật hồ sơ"),
                         )
                     }
                 }
@@ -62,7 +63,7 @@ class ProfileViewModel @Inject constructor(
                     _actionState.update {
                         it.copy(
                             isSaving = false,
-                            message = throwable.message ?: "Không thể gửi lời mời",
+                            message = throwable.toUserMessage("Không thể gửi lời mời"),
                         )
                     }
                 }
@@ -85,7 +86,7 @@ class ProfileViewModel @Inject constructor(
                     _actionState.update {
                         it.copy(
                             isSaving = false,
-                            message = throwable.message ?: "Không thể phản hồi lời mời",
+                            message = throwable.toUserMessage("Không thể phản hồi lời mời"),
                         )
                     }
                 }
@@ -101,7 +102,7 @@ class ProfileViewModel @Inject constructor(
                     _actionState.update {
                         it.copy(
                             isSaving = false,
-                            message = throwable.message ?: "Không thể hủy liên kết",
+                            message = throwable.toUserMessage("Không thể hủy liên kết"),
                         )
                     }
                 }
@@ -113,7 +114,7 @@ class ProfileViewModel @Inject constructor(
             runCatching { guardianRepository.markAlertRead(alertId) }
                 .onFailure { throwable ->
                     _actionState.update {
-                        it.copy(message = throwable.message ?: "Không thể đánh dấu cảnh báo đã đọc")
+                        it.copy(message = throwable.toUserMessage("Không thể đánh dấu cảnh báo đã đọc"))
                     }
                 }
         }

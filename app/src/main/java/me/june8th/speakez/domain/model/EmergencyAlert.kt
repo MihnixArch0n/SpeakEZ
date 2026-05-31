@@ -6,6 +6,7 @@ data class EmergencyAlert(
     val userDisplayName: String,
     val guardianUid: String,
     val phraseText: String,
+    val type: EmergencyAlertType,
     val actionPayload: String?,
     val createdAtMillis: Long,
     val readAtMillis: Long?,
