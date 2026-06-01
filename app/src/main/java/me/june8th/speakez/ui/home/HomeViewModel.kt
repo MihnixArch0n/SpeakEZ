@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.stateIn
 import me.june8th.speakez.data.mulberry.MulberrySymbolRepository
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
+import me.june8th.speakez.data.word.WordAssetType
+import me.june8th.speakez.data.word.WordEntity
+import me.june8th.speakez.domain.repository.WordRepository
 import me.june8th.speakez.tts.TtsManager
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,10 +27,14 @@ import androidx.core.content.edit
 class HomeViewModel @Inject constructor(
     private val ttsManager: TtsManager,
     private val mulberrySymbolRepository: MulberrySymbolRepository,
+    wordRepository: WordRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val _sentenceWords = MutableStateFlow<List<MulberrySymbol>>(emptyList())
-    val sentenceWords: StateFlow<List<MulberrySymbol>> = _sentenceWords.asStateFlow()
+    private val _sentenceWords = MutableStateFlow<List<SentenceWord>>(emptyList())
+    val sentenceWords: StateFlow<List<SentenceWord>> = _sentenceWords.asStateFlow()
+
+    val customWords: StateFlow<List<WordEntity>> = wordRepository.getAllCustomWords()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _selectedCategory = MutableStateFlow<String?>("CATEGORIES_ROOT")
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
@@ -419,8 +426,16 @@ class HomeViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if (now - lastAddWordTime < 150) return
         lastAddWordTime = now
-        _sentenceWords.value += symbol
+        _sentenceWords.value += SentenceWord.Mulberry(symbol)
         ttsManager.speak(symbol.symbolVi)
+    }
+
+    fun addCustomWord(word: WordEntity) {
+        val now = System.currentTimeMillis()
+        if (now - lastAddWordTime < 150) return
+        lastAddWordTime = now
+        _sentenceWords.value += SentenceWord.Custom(word)
+        ttsManager.speak(word.wordText)
     }
 
     fun removeLastWord() {
@@ -435,7 +450,7 @@ class HomeViewModel @Inject constructor(
         _sentenceWords.value = emptyList()
     }
 
-    fun getSentence(): String = _sentenceWords.value.joinToString(" ") { it.symbolVi }
+    fun getSentence(): String = _sentenceWords.value.joinToString(" ") { it.text }
 
     fun speakSentence() {
         val sentence = getSentence()
@@ -447,5 +462,23 @@ class HomeViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         ttsManager.stop()
+    }
+}
+
+sealed interface SentenceWord {
+    val text: String
+    val assetValue: String
+    val isEmoji: Boolean
+
+    data class Mulberry(val symbol: MulberrySymbol) : SentenceWord {
+        override val text: String = symbol.symbolVi
+        override val assetValue: String = symbol.assetPath
+        override val isEmoji: Boolean = false
+    }
+
+    data class Custom(val word: WordEntity) : SentenceWord {
+        override val text: String = word.wordText
+        override val assetValue: String = word.assetValue
+        override val isEmoji: Boolean = word.assetType == WordAssetType.EMOJI
     }
 }

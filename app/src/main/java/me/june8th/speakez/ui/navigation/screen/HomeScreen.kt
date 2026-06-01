@@ -76,9 +76,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import me.june8th.speakez.R
+import me.june8th.speakez.data.word.CUSTOM_WORDS_CATEGORY_ID
+import me.june8th.speakez.data.word.WordAssetType
+import me.june8th.speakez.data.word.WordEntity
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
 import me.june8th.speakez.ui.home.HomeViewModel
+import me.june8th.speakez.ui.home.SentenceWord
 import androidx.compose.foundation.lazy.grid.items as lazyGridItems
 import androidx.compose.foundation.lazy.grid.itemsIndexed as lazyGridItemsIndexed
 import androidx.compose.foundation.lazy.items as lazyRowItems
@@ -355,7 +359,7 @@ fun HomeScreen(
                                         )
                                     }
                                 } else {
-                                    lazyRowItems(sentenceWords.value) { symbol ->
+                                    lazyRowItems(sentenceWords.value) { word ->
                                         // Visual card inside Sentence Box
                                         Card(
                                             modifier = Modifier
@@ -371,14 +375,9 @@ fun HomeScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                                             ) {
-                                                AsyncImage(
-                                                    model = symbol.assetPath,
-                                                    contentDescription = symbol.symbolVi,
-                                                    modifier = Modifier.size(24.dp),
-                                                    contentScale = ContentScale.Fit
-                                                )
+                                                SentenceWordAsset(word = word, modifier = Modifier.size(24.dp))
                                                 Text(
-                                                    text = symbol.symbolVi,
+                                                    text = word.text,
                                                     style = MaterialTheme.typography.labelSmall.copy(
                                                         fontWeight = FontWeight.Bold,
                                                         fontSize = 10.sp
@@ -576,7 +575,7 @@ private fun SentenceBar(
                         )
                     }
                 } else {
-                    lazyRowItems(sentenceWords.value) { symbol ->
+                    lazyRowItems(sentenceWords.value) { word ->
                         Card(
                             modifier = Modifier.height(56.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -587,14 +586,9 @@ private fun SentenceBar(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                               ) {
-                                AsyncImage(
-                                    model = symbol.assetPath,
-                                    contentDescription = symbol.symbolVi,
-                                    modifier = Modifier.size(36.dp),
-                                    contentScale = ContentScale.Fit
-                                )
+                                SentenceWordAsset(word = word, modifier = Modifier.size(36.dp))
                                 Text(
-                                    text = symbol.symbolVi,
+                                    text = word.text,
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -700,6 +694,7 @@ private fun CategoryRow(
     val categories = viewModel.categories.collectAsState()
     val selectedCategory = viewModel.selectedCategory.collectAsState()
     val favoriteSymbols = viewModel.favoriteSymbols.collectAsState()
+    val customWords = viewModel.customWords.collectAsState()
     val totalSymbols = categories.value.sumOf { it.symbolCount }
 
     Column(modifier = modifier) {
@@ -758,6 +753,17 @@ private fun CategoryRow(
                     onClick = { viewModel.selectCategory("FAVORITES") },
                     isLandscape = isLandscape,
                     enabled = !isEditMode || selectedCategory.value == "FAVORITES"
+                )
+            }
+            item(key = "custom_words") {
+                CategoryChip(
+                    title = "🌟 Từ của tôi",
+                    count = customWords.value.size,
+                    selected = selectedCategory.value == CUSTOM_WORDS_CATEGORY_ID,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    onClick = { viewModel.selectCategory(CUSTOM_WORDS_CATEGORY_ID) },
+                    isLandscape = isLandscape,
+                    enabled = !isEditMode,
                 )
             }
             lazyRowItems(
@@ -935,15 +941,24 @@ private fun SymbolGrid(
     val searchQuery = viewModel.searchQuery.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
     val itemsPerPage by viewModel.itemsPerPage.collectAsState()
+    val customWords by viewModel.customWords.collectAsState()
 
     val isRootFolders = (selectedCategory.value == null || selectedCategory.value == "CATEGORIES_ROOT") && searchQuery.value.isBlank()
     val isRecommendation = selectedCategory.value == "RECOMMENDATION"
     val isFavorites = selectedCategory.value == "FAVORITES"
     val isRecommendationOrFavorites = isRecommendation || isFavorites
+    val isCustomWords = selectedCategory.value == CUSTOM_WORDS_CATEGORY_ID
+    val visibleCustomWords = remember(customWords, searchQuery.value) {
+        customWords.filter { word ->
+            searchQuery.value.isBlank() || word.wordText.contains(searchQuery.value, ignoreCase = true)
+        }
+    }
 
     Column(modifier = modifier) {
         if (!isLandscape) {
-            val titleText = if (isRecommendation) {
+            val titleText = if (isCustomWords) {
+                "Từ của tôi (${visibleCustomWords.size})"
+            } else if (isRecommendation) {
                 "Gợi ý đề xuất (${symbols.value.size})"
             } else if (isFavorites) {
                 "Yêu thích (${symbols.value.size})"
@@ -963,6 +978,30 @@ private fun SymbolGrid(
 
         when {
             isLoading.value -> CenterMessage(text = stringResource(R.string.symbols_loading))
+            isCustomWords -> {
+                if (visibleCustomWords.isEmpty()) {
+                    CenterMessage(text = stringResource(R.string.empty_vocabulary))
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(gridColumns),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        lazyGridItems(
+                            items = visibleCustomWords,
+                            key = { word -> word.id },
+                        ) { word ->
+                            WordButton(
+                                word = word,
+                                onClick = { viewModel.addCustomWord(word) },
+                                isLandscape = isLandscape,
+                            )
+                        }
+                    }
+                }
+            }
             symbols.value.isEmpty() -> CenterMessage(text = stringResource(R.string.empty_vocabulary))
             else -> {
                 if (isLandscape) {
@@ -1353,6 +1392,70 @@ private fun CenterMessage(text: String) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun SentenceWordAsset(
+    word: SentenceWord,
+    modifier: Modifier = Modifier,
+) {
+    if (word.isEmoji) {
+        Text(
+            text = word.assetValue,
+            modifier = modifier,
+            fontSize = 24.sp,
+        )
+    } else {
+        AsyncImage(
+            model = word.assetValue,
+            contentDescription = word.text,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+private fun WordButton(
+    word: WordEntity,
+    onClick: () -> Unit,
+    isLandscape: Boolean = false,
+) {
+    Surface(
+        onClick = onClick,
+        color = if (isLandscape) Color.White else MaterialTheme.colorScheme.primaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (isLandscape) 88.dp else 156.dp)
+            .border(BorderStroke(1.dp, Color.LightGray), MaterialTheme.shapes.medium),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            if (word.assetType == WordAssetType.EMOJI) {
+                Text(text = word.assetValue, fontSize = if (isLandscape) 32.sp else 48.sp)
+            } else {
+                AsyncImage(
+                    model = word.assetValue,
+                    contentDescription = word.wordText,
+                    modifier = Modifier.size(if (isLandscape) 40.dp else 64.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            Text(
+                text = word.wordText,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

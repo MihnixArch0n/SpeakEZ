@@ -23,6 +23,7 @@ object MainRoute {
     const val QuickPhrases = "quick_phrases"
     const val EditRecommendation = "edit_recommendation"
     const val Settings = "settings"
+    const val AddCustomWord = "add_custom_word"
     const val Account = "account"
 }
 

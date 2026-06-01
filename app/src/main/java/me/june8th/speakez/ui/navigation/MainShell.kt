@@ -50,6 +50,7 @@ import me.june8th.speakez.R
 import me.june8th.speakez.domain.model.AccountType
 import me.june8th.speakez.ui.auth.SessionViewModel
 import me.june8th.speakez.ui.navigation.screen.AccountScreen
+import me.june8th.speakez.ui.navigation.screen.AddCustomWordScreen
 import me.june8th.speakez.ui.navigation.screen.GuardianHomeScreen
 import me.june8th.speakez.ui.navigation.screen.HomeScreen
 import me.june8th.speakez.ui.navigation.screen.QuickPhrasesScreen
@@ -76,7 +77,7 @@ fun MainShell(
 
     LaunchedEffect(isGuardian, currentRoute) {
         if (currentRoute == null) return@LaunchedEffect
-        if (navItems.none { it.route == currentRoute }) {
+        if (navItems.none { it.route == currentRoute } && currentRoute != MainRoute.AddCustomWord) {
             homeViewModel.setEditMode(false)
             navController.navigate(startDestination) {
                 popUpTo(navController.graph.findStartDestination().id) {
@@ -94,6 +95,7 @@ fun MainShell(
             MainRoute.QuickPhrases -> R.string.quick_phrases_title
             MainRoute.EditRecommendation -> R.string.edit_recommendation_title
             MainRoute.Settings -> R.string.settings_title
+            MainRoute.AddCustomWord -> R.string.add_custom_word_title
             MainRoute.Account -> if (isGuardian) R.string.nav_monitoring else R.string.nav_account
             else -> R.string.app_name
         }
@@ -187,7 +189,7 @@ fun MainShell(
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    CenterAlignedTopAppBar(
+                    if (currentRoute != MainRoute.AddCustomWord) CenterAlignedTopAppBar(
                         title = {
                             Text(
                                 text = stringResource(currentTitle),
@@ -197,7 +199,7 @@ fun MainShell(
                     )
                 },
                 bottomBar = {
-                    NavigationBar {
+                    if (currentRoute != MainRoute.AddCustomWord) NavigationBar {
                         navItems.forEach { item ->
                             val selected = if (item.route == MainRoute.EditRecommendation) {
                                 currentRoute == MainRoute.Home && isEditMode
@@ -305,7 +307,17 @@ private fun MainNavHost(
                 onBackClick = {
                     navController.popBackStackIfCurrent(MainRoute.Settings)
                 },
+                onAddCustomWordClick = {
+                    navController.navigate(MainRoute.AddCustomWord)
+                },
                 isGuardian = isGuardian,
+            )
+        }
+        composable(MainRoute.AddCustomWord) {
+            AddCustomWordScreen(
+                onBackClick = {
+                    navController.popBackStackIfCurrent(MainRoute.AddCustomWord)
+                },
             )
         }
         composable(MainRoute.Account) {

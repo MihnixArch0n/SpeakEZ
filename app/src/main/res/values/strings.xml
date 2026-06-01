@@ -12,6 +12,7 @@
     <string name="home_title">Bảng giao tiếp</string>
     <string name="quick_phrases_title">Nút khẩn cấp</string>
     <string name="settings_title">Cài đặt</string>
+    <string name="add_custom_word_title">Thêm từ của tôi</string>
     <string name="sentence_placeholder">Nhấn biểu tượng để tạo câu</string>
     <string name="delete_last_word">Xóa từ cuối</string>
     <string name="speak_sentence">Phát âm câu hiện tại</string>
