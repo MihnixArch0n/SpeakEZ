@@ -968,8 +968,13 @@ private fun SymbolGrid(
                 if (isLandscape) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val verticalSpacing = 4.dp
-                        val rowCount = rows
-                        val cardHeight = (maxHeight - (verticalSpacing * (rowCount - 1))) / rowCount
+                        val rowCount = rows.coerceAtLeast(1)
+                        val availableHeight = maxHeight - (verticalSpacing * (rowCount - 1))
+                        val cardHeight = if (availableHeight > 0.dp) {
+                            availableHeight / rowCount
+                        } else {
+                            1.dp
+                        }
 
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(gridColumns),
