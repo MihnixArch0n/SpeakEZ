@@ -55,7 +55,6 @@ fun SpeakEZApp(
     val notifier = androidx.compose.runtime.remember(context) {
         EmergencyAlertNotifier(context.applicationContext)
     }
-
     LaunchedEffect(alerts) {
         alerts.forEach { alert ->
             if (notifiedAlertIds.add(alert.id)) {

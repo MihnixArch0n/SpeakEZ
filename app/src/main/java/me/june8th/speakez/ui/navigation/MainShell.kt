@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -295,14 +296,14 @@ private fun MainNavHost(
         composable(MainRoute.QuickPhrases) {
             QuickPhrasesScreen(
                 onBackClick = {
-                    navController.popBackStack()
+                    navController.popBackStackIfCurrent(MainRoute.QuickPhrases)
                 }
             )
         }
         composable(MainRoute.Settings) {
             SettingsScreen(
                 onBackClick = {
-                    navController.popBackStack()
+                    navController.popBackStackIfCurrent(MainRoute.Settings)
                 },
                 isGuardian = isGuardian,
             )
@@ -310,7 +311,7 @@ private fun MainNavHost(
         composable(MainRoute.Account) {
             AccountScreen(
                 onBackClick = {
-                    navController.popBackStack()
+                    navController.popBackStackIfCurrent(MainRoute.Account)
                 },
                 onLoginRequested = onLoginRequested,
             )
@@ -326,5 +327,12 @@ private fun MainNavHost(
                 )
             }
         }
+    }
+}
+
+private fun NavHostController.popBackStackIfCurrent(expectedRoute: String) {
+    val currentRoute = currentDestination?.route
+    if (currentRoute == expectedRoute) {
+        popBackStack()
     }
 }
