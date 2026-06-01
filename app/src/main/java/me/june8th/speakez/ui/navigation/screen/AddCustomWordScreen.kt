@@ -1,5 +1,6 @@
 package me.june8th.speakez.ui.navigation.screen
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -51,6 +53,7 @@ fun AddCustomWordScreen(
 ) {
     val draft by viewModel.customWordDraft.collectAsStateWithLifecycle()
     val symbols by viewModel.mulberrySymbols.collectAsStateWithLifecycle()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var query by remember { mutableStateOf("") }
     val filteredSymbols = symbols.filter { symbol ->
         query.isBlank() ||
@@ -103,23 +106,38 @@ fun AddCustomWordScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                value = draft.wordText,
-                onValueChange = viewModel::updateCustomWordText,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Nội dung từ") },
-                singleLine = true,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssetTypeButton(
-                    text = "Mulberry Icons",
-                    selected = draft.assetType == WordAssetType.MULBERRY,
-                    onClick = { viewModel.selectCustomWordAssetType(WordAssetType.MULBERRY) },
+            if (isLandscape) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CustomWordTextField(
+                        value = draft.wordText,
+                        onValueChange = viewModel::updateCustomWordText,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (draft.assetType == WordAssetType.MULBERRY) {
+                        MulberrySearchField(
+                            query = query,
+                            onQueryChange = { query = it },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    AssetTypeSelector(
+                        selectedAssetType = draft.assetType,
+                        onAssetTypeSelected = viewModel::selectCustomWordAssetType,
+                    )
+                }
+            } else {
+                CustomWordTextField(
+                    value = draft.wordText,
+                    onValueChange = viewModel::updateCustomWordText,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                AssetTypeButton(
-                    text = "Emoji",
-                    selected = draft.assetType == WordAssetType.EMOJI,
-                    onClick = { viewModel.selectCustomWordAssetType(WordAssetType.EMOJI) },
+                AssetTypeSelector(
+                    selectedAssetType = draft.assetType,
+                    onAssetTypeSelected = viewModel::selectCustomWordAssetType,
                 )
             }
             draft.errorMessage?.let { error ->
@@ -136,15 +154,18 @@ fun AddCustomWordScreen(
                     textStyle = MaterialTheme.typography.headlineMedium,
                 )
             } else {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Tìm biểu tượng Mulberry") },
-                    singleLine = true,
-                )
+                if (!isLandscape) {
+                    MulberrySearchField(
+                        query = query,
+                        onQueryChange = { query = it },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 96.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -188,6 +209,55 @@ fun AddCustomWordScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CustomWordTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        label = { Text("Nội dung từ") },
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun MulberrySearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier,
+        label = { Text("Tìm biểu tượng Mulberry") },
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun AssetTypeSelector(
+    selectedAssetType: WordAssetType,
+    onAssetTypeSelected: (WordAssetType) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AssetTypeButton(
+            text = "Mulberry Icons",
+            selected = selectedAssetType == WordAssetType.MULBERRY,
+            onClick = { onAssetTypeSelected(WordAssetType.MULBERRY) },
+        )
+        AssetTypeButton(
+            text = "Emoji",
+            selected = selectedAssetType == WordAssetType.EMOJI,
+            onClick = { onAssetTypeSelected(WordAssetType.EMOJI) },
+        )
     }
 }
 
