@@ -29,7 +29,6 @@ class SettingsViewModel @Inject constructor(
     private val ttsManager: TtsManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
-
     private val _speechRate = MutableStateFlow(1.0f)
     val speechRate: StateFlow<Float> = _speechRate.asStateFlow()
 
