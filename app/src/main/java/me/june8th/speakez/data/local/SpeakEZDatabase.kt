@@ -5,15 +5,20 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import me.june8th.speakez.data.quickphrase.QuickPhraseDao
 import me.june8th.speakez.data.quickphrase.QuickPhraseEntity
+import me.june8th.speakez.data.word.WordAssetTypeConverter
+import me.june8th.speakez.data.word.WordDao
+import me.june8th.speakez.data.word.WordEntity
 
 @Database(
     entities = [
         QuickPhraseEntity::class,
+        WordEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
-@TypeConverters(ActionTypeConverter::class)
+@TypeConverters(ActionTypeConverter::class, WordAssetTypeConverter::class)
 abstract class SpeakEZDatabase : RoomDatabase() {
     abstract fun quickPhraseDao(): QuickPhraseDao
+    abstract fun wordDao(): WordDao
 }

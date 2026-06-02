@@ -2,10 +2,7 @@ package me.june8th.speakez.ui.navigation.screen
 
 import android.content.Context
 import android.content.res.Configuration
-import android.net.Uri
 import android.view.inputmethod.InputMethodManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -86,9 +83,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.june8th.speakez.R
+import me.june8th.speakez.data.word.WordAssetType
+import me.june8th.speakez.data.word.WordEntity
 import me.june8th.speakez.domain.model.ActionType
 import me.june8th.speakez.domain.model.QuickPhrase
-import me.june8th.speakez.domain.model.VocabularyItem
 import me.june8th.speakez.tts.SystemVoiceOption
 import me.june8th.speakez.ui.quick_phrases.QuickPhraseIntent
 import me.june8th.speakez.ui.quick_phrases.QuickPhraseUiState
@@ -96,11 +94,11 @@ import me.june8th.speakez.ui.quick_phrases.QuickPhrasesViewModel
 import me.june8th.speakez.ui.settings.SettingsViewModel
 import androidx.core.content.edit
 
-private val defaultEmojis = listOf("🍚", "💊", "⚽", "😊", "🖐️")
-
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
+    onAddCustomWordClick: () -> Unit,
+    onEditCustomWordClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     isGuardian: Boolean = false,
 ) {
@@ -114,19 +112,10 @@ fun SettingsScreen(
     val saveSuccessMessage = androidx.compose.ui.res.stringResource(R.string.settings_save_success)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val vocabulary by viewModel.vocabularyItems.collectAsStateWithLifecycle()
+    val customWords by viewModel.customWords.collectAsStateWithLifecycle()
     val quickPhraseUiState by quickPhrasesViewModel.uiState.collectAsStateWithLifecycle()
 
-    var showAddDialog by remember { mutableStateOf(false) }
-    var selectedImageItemId by remember { mutableStateOf<String?>(null) }
-
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        val targetId = selectedImageItemId
-        if (uri != null && targetId != null) {
-            viewModel.updateVocabularyImage(targetId, uri.toString())
-        }
-        selectedImageItemId = null
-    }
+    var pendingDeleteWord by remember { mutableStateOf<WordEntity?>(null) }
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -478,20 +467,20 @@ fun SettingsScreen(
                     item {
                         SettingCard(
                             title = "Quản lý Từ vựng",
-                            subtitle = "Thêm/ẩn hiện/đổi ảnh từ vựng",
+                            subtitle = "Thêm, sửa hoặc xóa từ tùy chỉnh",
                             icon = Icons.Filled.Add
                         ) {
-                            Button(onClick = { showAddDialog = true }) { Text("Thêm từ mới") }
+                            Button(onClick = onAddCustomWordClick) { Text("Thêm từ mới") }
                             Spacer(modifier = Modifier.height(12.dp))
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                vocabulary.forEach { item ->
-                                    VocabularyRow(
-                                        item = item,
-                                        onToggleVisibility = { viewModel.toggleVocabularyVisibility(item.id) },
-                                        onPickImage = {
-                                            selectedImageItemId = item.id
-                                            imagePicker.launch("image/*")
-                                        },
+                                if (customWords.isEmpty()) {
+                                    Text("Chưa có từ tùy chỉnh")
+                                }
+                                customWords.forEach { word ->
+                                    CustomWordRow(
+                                        word = word,
+                                        onEdit = { onEditCustomWordClick(word.id) },
+                                        onDelete = { pendingDeleteWord = word },
                                     )
                                 }
                             }
@@ -502,12 +491,25 @@ fun SettingsScreen(
         }
     }
 
-    if (showAddDialog) {
-        AddVocabularyDialog(
-            onDismiss = { showAddDialog = false },
-            onSubmit = { label, emoji ->
-                viewModel.addVocabulary(label, emoji)
-                showAddDialog = false
+    pendingDeleteWord?.let { word ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteWord = null },
+            title = { Text("Xóa từ tùy chỉnh?") },
+            text = { Text("Bạn có chắc muốn xóa “${word.wordText}”?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteCustomWord(word.id)
+                        pendingDeleteWord = null
+                    },
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteWord = null }) {
+                    Text("Hủy")
+                }
             },
         )
     }
@@ -773,58 +775,41 @@ private fun ActionType.label(): String {
 }
 
 @Composable
-private fun VocabularyRow(
-    item: VocabularyItem,
-    onToggleVisibility: () -> Unit,
-    onPickImage: () -> Unit,
+private fun CustomWordRow(
+    word: WordEntity,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = item.title, modifier = Modifier.weight(1f))
-        TextButton(onClick = onPickImage) { Text("Đổi ảnh") }
-        TextButton(onClick = onToggleVisibility) { Text(if (item.isVisible) "Hide" else "Show") }
+        if (word.assetType == WordAssetType.EMOJI) {
+            Text(text = word.assetValue, fontSize = 28.sp)
+        } else {
+            coil3.compose.AsyncImage(
+                model = word.assetValue,
+                contentDescription = word.wordText,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = word.wordText, modifier = Modifier.weight(1f))
+        IconButton(onClick = onEdit) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = "Sửa từ",
+            )
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "Xóa từ",
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
     }
-}
-
-@Composable
-private fun AddVocabularyDialog(
-    onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit,
-) {
-    var label by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf(defaultEmojis.first()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Thêm từ mới") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = { label = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nhãn từ vựng") },
-                )
-                Text("Emoji")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    defaultEmojis.forEach { candidate ->
-                        TextButton(onClick = { emoji = candidate }) {
-                            Text(if (emoji == candidate) "[$candidate]" else candidate)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onSubmit(label, emoji) }, enabled = label.isNotBlank()) {
-                Text("Thêm")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Hủy") } },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

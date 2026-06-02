@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Binds
@@ -24,9 +26,12 @@ import me.june8th.speakez.data.quickphrase.QuickPhraseDao
 import me.june8th.speakez.data.quickphrase.QuickPhraseRepositoryImpl
 import me.june8th.speakez.data.settings.AppSettingsRepository
 import me.june8th.speakez.data.settings.DataStoreAppSettingsRepository
+import me.june8th.speakez.data.word.WordDao
+import me.june8th.speakez.data.word.WordRepositoryImpl
 import me.june8th.speakez.domain.repository.QuickPhraseRepository
 import me.june8th.speakez.domain.repository.AuthRepository
 import me.june8th.speakez.domain.repository.GuardianRepository
+import me.june8th.speakez.domain.repository.WordRepository
 import me.june8th.speakez.tts.TextSpeaker
 import me.june8th.speakez.tts.TtsManager
 import javax.inject.Qualifier
@@ -58,6 +63,12 @@ abstract class AppBindingsModule {
     abstract fun bindQuickPhraseRepository(
         repository: QuickPhraseRepositoryImpl,
     ): QuickPhraseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWordRepository(
+        repository: WordRepositoryImpl,
+    ): WordRepository
 
     @Binds
     @Singleton
@@ -96,12 +107,18 @@ object AppModule {
             context,
             SpeakEZDatabase::class.java,
             "speakez.db",
-        ).build()
+        ).addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     @Provides
     fun provideQuickPhraseDao(database: SpeakEZDatabase): QuickPhraseDao {
         return database.quickPhraseDao()
+    }
+
+    @Provides
+    fun provideWordDao(database: SpeakEZDatabase): WordDao {
+        return database.wordDao()
     }
 
     @Provides
@@ -121,5 +138,22 @@ object AppModule {
     @ApplicationScope
     fun provideApplicationScope(): CoroutineScope {
         return CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    }
+}
+
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `words` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `wordText` TEXT NOT NULL,
+                `categoryId` TEXT NOT NULL,
+                `isCustom` INTEGER NOT NULL,
+                `assetType` TEXT NOT NULL,
+                `assetValue` TEXT NOT NULL
+            )
+            """.trimIndent(),
+        )
     }
 }
