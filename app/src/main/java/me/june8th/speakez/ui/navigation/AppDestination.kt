@@ -24,7 +24,11 @@ object MainRoute {
     const val EditRecommendation = "edit_recommendation"
     const val Settings = "settings"
     const val AddCustomWord = "add_custom_word"
+    const val EditCustomWord = "edit_custom_word/{wordId}"
+    const val WordIdArgument = "wordId"
     const val Account = "account"
+
+    fun editCustomWord(wordId: Long): String = "edit_custom_word/$wordId"
 }
 
 data class MainNavItem(

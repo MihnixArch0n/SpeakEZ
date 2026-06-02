@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import me.june8th.speakez.data.mulberry.MulberrySymbolRepository
 import me.june8th.speakez.domain.model.MulberryCategory
 import me.june8th.speakez.domain.model.MulberrySymbol
@@ -27,14 +28,14 @@ import androidx.core.content.edit
 class HomeViewModel @Inject constructor(
     private val ttsManager: TtsManager,
     private val mulberrySymbolRepository: MulberrySymbolRepository,
-    wordRepository: WordRepository,
+    private val wordRepository: WordRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _sentenceWords = MutableStateFlow<List<SentenceWord>>(emptyList())
     val sentenceWords: StateFlow<List<SentenceWord>> = _sentenceWords.asStateFlow()
 
     val customWords: StateFlow<List<WordEntity>> = wordRepository.getAllCustomWords()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _selectedCategory = MutableStateFlow<String?>("CATEGORIES_ROOT")
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
@@ -158,6 +159,20 @@ class HomeViewModel @Inject constructor(
     init {
         // Load initial grid size from preferences
         refreshGridSize()
+
+        viewModelScope.launch {
+            wordRepository.getAllCustomWords().collect { words ->
+                val wordsById = words.associateBy(WordEntity::id)
+                _sentenceWords.update { sentence ->
+                    sentence.mapNotNull { sentenceWord ->
+                        when (sentenceWord) {
+                            is SentenceWord.Custom -> wordsById[sentenceWord.word.id]?.let(SentenceWord::Custom)
+                            is SentenceWord.Mulberry -> sentenceWord
+                        }
+                    }
+                }
+            }
+        }
 
         viewModelScope.launch {
             val symbols = mulberrySymbolRepository.getSymbols()

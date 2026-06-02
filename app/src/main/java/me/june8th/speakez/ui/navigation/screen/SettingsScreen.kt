@@ -98,6 +98,7 @@ import androidx.core.content.edit
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onAddCustomWordClick: () -> Unit,
+    onEditCustomWordClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     isGuardian: Boolean = false,
 ) {
@@ -466,7 +467,7 @@ fun SettingsScreen(
                     item {
                         SettingCard(
                             title = "Quản lý Từ vựng",
-                            subtitle = "Thêm/ẩn hiện/đổi ảnh từ vựng",
+                            subtitle = "Thêm, sửa hoặc xóa từ tùy chỉnh",
                             icon = Icons.Filled.Add
                         ) {
                             Button(onClick = onAddCustomWordClick) { Text("Thêm từ mới") }
@@ -478,6 +479,7 @@ fun SettingsScreen(
                                 customWords.forEach { word ->
                                     CustomWordRow(
                                         word = word,
+                                        onEdit = { onEditCustomWordClick(word.id) },
                                         onDelete = { pendingDeleteWord = word },
                                     )
                                 }
@@ -775,6 +777,7 @@ private fun ActionType.label(): String {
 @Composable
 private fun CustomWordRow(
     word: WordEntity,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -793,6 +796,12 @@ private fun CustomWordRow(
         }
         Spacer(modifier = Modifier.width(8.dp))
         Text(text = word.wordText, modifier = Modifier.weight(1f))
+        IconButton(onClick = onEdit) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = "Sửa từ",
+            )
+        }
         IconButton(onClick = onDelete) {
             Icon(
                 imageVector = Icons.Filled.Delete,

@@ -8,7 +8,11 @@ interface WordRepository {
 
     fun getAllCustomWords(): Flow<List<WordEntity>>
 
+    suspend fun getCustomWord(id: Long): WordEntity?
+
     suspend fun addCustomWord(word: WordEntity): Result<Long>
+
+    suspend fun updateCustomWord(word: WordEntity): Result<Unit>
 
     suspend fun deleteWord(id: Long)
 }

@@ -40,10 +40,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.june8th.speakez.R
@@ -77,7 +79,7 @@ fun MainShell(
 
     LaunchedEffect(isGuardian, currentRoute) {
         if (currentRoute == null) return@LaunchedEffect
-        if (navItems.none { it.route == currentRoute } && currentRoute != MainRoute.AddCustomWord) {
+        if (navItems.none { it.route == currentRoute } && !currentRoute.isCustomWordEditorRoute()) {
             homeViewModel.setEditMode(false)
             navController.navigate(startDestination) {
                 popUpTo(navController.graph.findStartDestination().id) {
@@ -96,6 +98,7 @@ fun MainShell(
             MainRoute.EditRecommendation -> R.string.edit_recommendation_title
             MainRoute.Settings -> R.string.settings_title
             MainRoute.AddCustomWord -> R.string.add_custom_word_title
+            MainRoute.EditCustomWord -> R.string.edit_custom_word_title
             MainRoute.Account -> if (isGuardian) R.string.nav_monitoring else R.string.nav_account
             else -> R.string.app_name
         }
@@ -189,7 +192,7 @@ fun MainShell(
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    if (currentRoute != MainRoute.AddCustomWord) CenterAlignedTopAppBar(
+                    if (!currentRoute.isCustomWordEditorRoute()) CenterAlignedTopAppBar(
                         title = {
                             Text(
                                 text = stringResource(currentTitle),
@@ -199,7 +202,7 @@ fun MainShell(
                     )
                 },
                 bottomBar = {
-                    if (currentRoute != MainRoute.AddCustomWord) NavigationBar {
+                    if (!currentRoute.isCustomWordEditorRoute()) NavigationBar {
                         navItems.forEach { item ->
                             val selected = if (item.route == MainRoute.EditRecommendation) {
                                 currentRoute == MainRoute.Home && isEditMode
@@ -310,6 +313,9 @@ private fun MainNavHost(
                 onAddCustomWordClick = {
                     navController.navigate(MainRoute.AddCustomWord)
                 },
+                onEditCustomWordClick = { wordId ->
+                    navController.navigate(MainRoute.editCustomWord(wordId))
+                },
                 isGuardian = isGuardian,
             )
         }
@@ -317,6 +323,19 @@ private fun MainNavHost(
             AddCustomWordScreen(
                 onBackClick = {
                     navController.popBackStackIfCurrent(MainRoute.AddCustomWord)
+                },
+            )
+        }
+        composable(
+            route = MainRoute.EditCustomWord,
+            arguments = listOf(
+                navArgument(MainRoute.WordIdArgument) { type = NavType.LongType },
+            ),
+        ) { backStackEntry ->
+            AddCustomWordScreen(
+                wordId = backStackEntry.arguments?.getLong(MainRoute.WordIdArgument),
+                onBackClick = {
+                    navController.popBackStackIfCurrent(MainRoute.EditCustomWord)
                 },
             )
         }
@@ -347,4 +366,8 @@ private fun NavHostController.popBackStackIfCurrent(expectedRoute: String) {
     if (currentRoute == expectedRoute) {
         popBackStack()
     }
+}
+
+private fun String?.isCustomWordEditorRoute(): Boolean {
+    return this == MainRoute.AddCustomWord || this == MainRoute.EditCustomWord
 }

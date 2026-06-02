@@ -48,6 +48,7 @@ import me.june8th.speakez.ui.settings.SettingsViewModel
 @Composable
 fun AddCustomWordScreen(
     onBackClick: () -> Unit,
+    wordId: Long? = null,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -60,6 +61,19 @@ fun AddCustomWordScreen(
             symbol.symbolVi.contains(query, ignoreCase = true) ||
             symbol.symbolEn.contains(query, ignoreCase = true) ||
             symbol.tags.contains(query, ignoreCase = true)
+    }
+    val isEditing = wordId != null
+    val back = {
+        viewModel.resetCustomWordDraft()
+        onBackClick()
+    }
+
+    LaunchedEffect(wordId) {
+        if (wordId == null) {
+            viewModel.resetCustomWordDraft()
+        } else {
+            viewModel.startEditCustomWord(wordId)
+        }
     }
 
     LaunchedEffect(viewModel) {
@@ -77,11 +91,11 @@ fun AddCustomWordScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBackClick) {
+                IconButton(onClick = back) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
                 }
                 Text(
-                    text = "Thêm từ của tôi",
+                    text = if (isEditing) "Chỉnh sửa từ" else "Thêm từ của tôi",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -90,12 +104,19 @@ fun AddCustomWordScreen(
         bottomBar = {
             Button(
                 onClick = viewModel::saveCustomWord,
-                enabled = !draft.isSaving,
+                enabled = !draft.isLoading && !draft.isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
             ) {
-                Text(if (draft.isSaving) "Đang lưu..." else "Lưu từ")
+                Text(
+                    when {
+                        draft.isLoading -> "Đang tải..."
+                        draft.isSaving -> "Đang lưu..."
+                        isEditing -> "Lưu thay đổi"
+                        else -> "Lưu từ"
+                    },
+                )
             }
         },
     ) { innerPadding ->

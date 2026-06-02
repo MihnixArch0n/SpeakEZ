@@ -21,6 +21,7 @@ import me.june8th.speakez.data.settings.DEFAULT_PITCH
 import me.june8th.speakez.data.settings.DEFAULT_SELECTED_VOICE_ID
 import me.june8th.speakez.data.settings.DEFAULT_SPEECH_RATE
 import me.june8th.speakez.data.word.CUSTOM_WORDS_CATEGORY_ID
+import me.june8th.speakez.data.word.CustomWordNotFoundException
 import me.june8th.speakez.data.word.DuplicateCustomWordException
 import me.june8th.speakez.data.word.WordAssetType
 import me.june8th.speakez.data.word.WordEntity
@@ -185,6 +186,26 @@ class SettingsViewModel @Inject constructor(
         _customWordDraft.value = _customWordDraft.value.copy(assetValue = assetValue, errorMessage = null)
     }
 
+    fun startEditCustomWord(id: Long) {
+        _customWordDraft.value = CustomWordDraftState(editingWordId = id, isLoading = true)
+        viewModelScope.launch {
+            val word = wordRepository.getCustomWord(id)
+            _customWordDraft.value = if (word == null) {
+                CustomWordDraftState(
+                    editingWordId = id,
+                    errorMessage = "Không tìm thấy từ tùy chỉnh",
+                )
+            } else {
+                CustomWordDraftState(
+                    editingWordId = word.id,
+                    wordText = word.wordText,
+                    assetType = word.assetType,
+                    assetValue = word.assetValue,
+                )
+            }
+        }
+    }
+
     fun saveCustomWord() {
         val draft = _customWordDraft.value
         val error = validateCustomWordDraft(draft)
@@ -195,23 +216,32 @@ class SettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             _customWordDraft.value = draft.copy(isSaving = true, errorMessage = null)
-            wordRepository.addCustomWord(
-                WordEntity(
-                    wordText = draft.wordText.trim(),
-                    categoryId = CUSTOM_WORDS_CATEGORY_ID,
-                    assetType = draft.assetType,
-                    assetValue = draft.assetValue,
-                ),
-            ).onSuccess {
+            val word = WordEntity(
+                id = draft.editingWordId ?: 0,
+                wordText = draft.wordText.trim(),
+                categoryId = CUSTOM_WORDS_CATEGORY_ID,
+                assetType = draft.assetType,
+                assetValue = draft.assetValue,
+            )
+            val saveResult = if (draft.editingWordId == null) {
+                wordRepository.addCustomWord(word).map { Unit }
+            } else {
+                wordRepository.updateCustomWord(word)
+            }
+            saveResult.onSuccess {
                 _customWordDraft.value = CustomWordDraftState()
                 _customWordEvents.send(CustomWordEvent.Saved)
             }.onFailure { error ->
                 _customWordDraft.value = draft.copy(
                     isSaving = false,
-                    errorMessage = if (error is DuplicateCustomWordException) {
-                        "Từ này đã tồn tại"
-                    } else {
-                        "Không thể lưu từ mới"
+                    errorMessage = when (error) {
+                        is DuplicateCustomWordException -> "Từ này đã tồn tại"
+                        is CustomWordNotFoundException -> "Không tìm thấy từ tùy chỉnh"
+                        else -> if (draft.editingWordId == null) {
+                            "Không thể lưu từ mới"
+                        } else {
+                            "Không thể lưu thay đổi"
+                        }
                     },
                 )
             }
@@ -235,9 +265,11 @@ class SettingsViewModel @Inject constructor(
 }
 
 data class CustomWordDraftState(
+    val editingWordId: Long? = null,
     val wordText: String = "",
     val assetType: WordAssetType = WordAssetType.MULBERRY,
     val assetValue: String = "",
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
 )
