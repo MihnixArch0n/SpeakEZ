@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +28,8 @@ class DataStoreAppSettingsRepository @Inject constructor(
             fontScale = preferences[Keys.FONT_SCALE]?.coerceIn(MIN_FONT_SCALE, MAX_FONT_SCALE)
                 ?: DEFAULT_FONT_SCALE,
             selectedVoiceId = preferences[Keys.SELECTED_VOICE_ID] ?: DEFAULT_SELECTED_VOICE_ID,
+            guardianBackgroundMonitoringEnabled = preferences[Keys.GUARDIAN_BACKGROUND_MONITORING_ENABLED]
+                ?: DEFAULT_GUARDIAN_BACKGROUND_MONITORING_ENABLED,
         )
     }
 
@@ -34,6 +37,9 @@ class DataStoreAppSettingsRepository @Inject constructor(
     override val pitch: Flow<Float> = settings.map { it.pitch }
     override val fontScale: Flow<Float> = settings.map { it.fontScale }
     override val selectedVoiceId: Flow<String> = settings.map { it.selectedVoiceId }
+    override val guardianBackgroundMonitoringEnabled: Flow<Boolean> = settings.map {
+        it.guardianBackgroundMonitoringEnabled
+    }
 
     override suspend fun setSpeechRate(value: Float) {
         updateFloat(Keys.SPEECH_RATE, value.coerceIn(MIN_SPEECH_RATE, MAX_SPEECH_RATE))
@@ -55,6 +61,14 @@ class DataStoreAppSettingsRepository @Inject constructor(
         }
     }
 
+    override suspend fun setGuardianBackgroundMonitoringEnabled(enabled: Boolean) {
+        withContext(ioDispatcher) {
+            dataStore.edit { preferences ->
+                preferences[Keys.GUARDIAN_BACKGROUND_MONITORING_ENABLED] = enabled
+            }
+        }
+    }
+
     private suspend fun updateFloat(key: Preferences.Key<Float>, value: Float) {
         withContext(ioDispatcher) {
             dataStore.edit { preferences ->
@@ -68,5 +82,8 @@ class DataStoreAppSettingsRepository @Inject constructor(
         val PITCH = floatPreferencesKey("pitch")
         val FONT_SCALE = floatPreferencesKey("font_scale")
         val SELECTED_VOICE_ID = stringPreferencesKey("selected_voice_id")
+        val GUARDIAN_BACKGROUND_MONITORING_ENABLED = booleanPreferencesKey(
+            "guardian_background_monitoring_enabled",
+        )
     }
 }

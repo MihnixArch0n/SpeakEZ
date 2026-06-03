@@ -8,9 +8,11 @@ interface AppSettingsRepository {
     val pitch: Flow<Float>
     val fontScale: Flow<Float>
     val selectedVoiceId: Flow<String>
+    val guardianBackgroundMonitoringEnabled: Flow<Boolean>
 
     suspend fun setSpeechRate(value: Float)
     suspend fun setPitch(value: Float)
     suspend fun setFontScale(value: Float)
     suspend fun setSelectedVoiceId(value: String)
+    suspend fun setGuardianBackgroundMonitoringEnabled(enabled: Boolean)
 }

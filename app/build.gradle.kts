@@ -16,11 +16,11 @@ android {
 
     defaultConfig {
         applicationId = "me.june8th.speakez"
-        minSdk = 32
+        minSdk = 30
         //noinspection OldTargetApi
         targetSdk = 36
         versionCode = 1
-        versionName = "1.1.0"
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionNameSuffix = "-beta"

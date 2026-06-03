@@ -1,5 +1,6 @@
 package me.june8th.speakez.ui
 
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import androidx.compose.foundation.background
@@ -31,37 +32,50 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import me.june8th.speakez.domain.model.EmergencyAlert
 import me.june8th.speakez.domain.model.EmergencyAlertType
+import me.june8th.speakez.domain.model.AccountType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import me.june8th.speakez.notification.EmergencyAlertNotifier
+import me.june8th.speakez.notification.GuardianAlertForegroundService
 import me.june8th.speakez.ui.alerts.EmergencyAlertViewModel
+import me.june8th.speakez.ui.auth.SessionViewModel
 import me.june8th.speakez.ui.navigation.SpeakEZNavHost
 
 @Composable
 fun SpeakEZApp(
     modifier: Modifier = Modifier,
     alertViewModel: EmergencyAlertViewModel = hiltViewModel(),
+    sessionViewModel: SessionViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
+    val profile by sessionViewModel.profileState.collectAsStateWithLifecycle()
+    val guardianBackgroundMonitoringEnabled by sessionViewModel.guardianBackgroundMonitoringEnabled.collectAsStateWithLifecycle(
+        initialValue = true,
+    )
     val alerts by alertViewModel.unreadAlerts.collectAsStateWithLifecycle()
     val acknowledgedCallRequests by alertViewModel.acknowledgedCallRequests.collectAsStateWithLifecycle()
-    val notifiedAlertIds = androidx.compose.runtime.remember { mutableStateSetOf<String>() }
     val acknowledgedCallNotifiedIds = androidx.compose.runtime.remember { mutableStateSetOf<String>() }
     val acknowledgedAlertIds = androidx.compose.runtime.remember { mutableStateSetOf<String>() }
     val context = LocalContext.current
     val notifier = androidx.compose.runtime.remember(context) {
         EmergencyAlertNotifier(context.applicationContext)
     }
-    LaunchedEffect(alerts) {
-        alerts.forEach { alert ->
-            if (notifiedAlertIds.add(alert.id)) {
-                if (alert.type != EmergencyAlertType.CALL_REQUEST) {
-                    notifier.show(alert)
-                }
-            }
+    LaunchedEffect(profile?.uid, profile?.accountType, profile?.isGuest, guardianBackgroundMonitoringEnabled) {
+        val shouldMonitor = profile?.uid != null &&
+            profile?.isGuest == false &&
+            profile?.accountType == AccountType.GUARDIAN &&
+            guardianBackgroundMonitoringEnabled
+        if (shouldMonitor) {
+            ContextCompat.startForegroundService(
+                context,
+                GuardianAlertForegroundService.startIntent(context),
+            )
+        } else {
+            context.stopService(Intent(context, GuardianAlertForegroundService::class.java))
         }
     }
 

@@ -93,6 +93,7 @@ class SettingsViewModel @Inject constructor(
             pitch = settings.pitch,
             fontScale = fontScale,
             selectedVoiceId = settings.selectedVoiceId,
+            guardianBackgroundMonitoringEnabled = settings.guardianBackgroundMonitoringEnabled,
             voiceOptions = voices,
             volume = volume,
             showLabels = showLabels,
@@ -136,6 +137,12 @@ class SettingsViewModel @Inject constructor(
     fun setSelectedVoiceId(voiceId: String) {
         viewModelScope.launch {
             appSettingsRepository.setSelectedVoiceId(voiceId)
+        }
+    }
+
+    fun setGuardianBackgroundMonitoringEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setGuardianBackgroundMonitoringEnabled(enabled)
         }
     }
 
@@ -292,6 +299,7 @@ data class SettingsUiState(
     val pitch: Float = DEFAULT_PITCH,
     val fontScale: Float = DEFAULT_FONT_SCALE,
     val selectedVoiceId: String = DEFAULT_SELECTED_VOICE_ID,
+    val guardianBackgroundMonitoringEnabled: Boolean = true,
     val voiceOptions: List<SystemVoiceOption> = emptyList(),
     val volume: Float = 0.8f,
     val showLabels: Boolean = true,
